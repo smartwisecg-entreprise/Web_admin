@@ -756,6 +756,187 @@
             border-color: var(--primary);
             transform: translateY(-1px);
         }
+
+        /* ==========================================================================
+   GESTION RESPONSIVE (MOBILE & TABLETTE)
+   ========================================================================== */
+
+        /* --- TABLETTE ET MOBILE (Max 992px) --- */
+        @media (max-width: 992px) {
+            .main-wrapper {
+                padding: 0 15px;
+            }
+        }
+
+        /* --- MOBILE LARGE (Max 768px) --- */
+        @media (max-width: 768px) {
+
+            /* 1. Ajustement global du Body et du Wrapper */
+            body {
+                padding-bottom: 40px;
+                /* Espace pour le scroll en bas */
+            }
+
+            .card {
+                padding: 25px 20px;
+                /* Réduction du padding interne des cartes */
+            }
+
+            /* 2. Barre de Navigation (Logout Bar) */
+            .logout-bar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+                /* La hauteur doit s'adapter au contenu empilé */
+                position: relative;
+                /* On enlève le sticky sur mobile si ça prend trop de place */
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: center;
+                /* Centre les éléments */
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            /* On cache le nom et le rôle pour gagner de la place, on garde l'avatar */
+            .user-details {
+                display: none;
+            }
+
+            /* Si vous voulez garder le nom, commentez le display: none ci-dessus et utilisez : */
+            /*
+    .user-details {
+        text-align: center;
+    }
+    */
+
+            /* Boutons de la nav en pleine largeur ou centrés */
+            .nav-link-btn,
+            .accounts-btn,
+            .logout-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                /* Boutons Sauvegarder/Annuler l'un sous l'autre */
+            }
+
+            /* 3. En-tête avec Logo */
+            .header-container {
+                flex-direction: column;
+                height: auto;
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: none;
+                /* On allège visuellement */
+            }
+
+            .header-logo {
+                position: static;
+                /* Annule le positionnement absolu qui cassait tout */
+                transform: none;
+                margin-bottom: 15px;
+                max-height: 80px;
+                /* Logo plus petit sur mobile */
+            }
+
+            .header-container h1 {
+                font-size: 1.4rem;
+                /* Titre plus petit */
+                padding-bottom: 10px;
+                border-bottom: 2px solid var(--accent);
+                /* On remet la bordure sous le titre */
+                width: 100%;
+            }
+
+            /* 4. Formulaires */
+            .form-grid {
+                grid-template-columns: 1fr;
+                /* Une seule colonne force */
+                gap: 15px;
+            }
+
+            /* 5. Liste des News */
+            .news-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .news-content {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .news-item img {
+                width: 100%;
+                max-width: 200px;
+                /* L'image ne devient pas géante */
+                height: 120px;
+                /* Un peu plus haut */
+                margin-bottom: 10px;
+            }
+
+            .actions {
+                width: 100%;
+                justify-content: space-between;
+                border-top: 1px solid #f1f5f9;
+                padding-top: 15px;
+                margin-top: 5px;
+            }
+
+            .action-btn {
+                flex: 1;
+                /* Les boutons prennent toute la largeur disponible */
+                justify-content: center;
+                display: flex;
+            }
+        }
+
+        /* --- PETIT MOBILE (Max 480px) --- */
+        @media (max-width: 480px) {
+            .card {
+                padding: 20px 15px;
+                border-radius: 0;
+                /* Design "Edge to Edge" sur très petits écrans */
+                border-left: none;
+                border-right: none;
+                box-shadow: none;
+            }
+
+            .main-wrapper {
+                gap: 15px;
+                margin-top: 10px;
+            }
+
+            /* Ajustement Modale Avatar */
+            .modal-card {
+                width: 95%;
+                border-radius: 12px;
+            }
+
+            .modal-footer {
+                grid-template-columns: 1fr;
+                /* Boutons l'un sous l'autre */
+            }
+
+            .img-container {
+                height: 300px;
+                /* Moins haut sur petit écran */
+            }
+
+            /* Force la taille de police pour éviter le zoom automatique sur iPhone */
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
     </style>
 </head>
 
@@ -1158,80 +1339,59 @@
         // 3. AUTHENTIFICATION ET PROFIL
         // ==========================================
         async function checkUser() {
-                // 1. Vérification de la session
-                const { data: { session } } = await supabaseClient.auth.getSession();
+            // 1. Vérification de la session
+            const { data: { session } } = await supabaseClient.auth.getSession();
 
-                if (!session) {
-                    window.location.href = 'index.html';
-                    return;
-                }
-
-                try {
-                    // 2. Récupération du profil complet depuis Supabase
-                    const { data: profile, error } = await supabaseClient
-                        .from('profiles')
-                        .select('display_name, avatar_url, role')
-                        .eq('id', session.user.id)
-                        .single();
-
-                    if (error) throw error;
-
-                    // 3. Affichage du contenu principal
-                    document.getElementById('adminContent').style.display = 'block';
-
-                    // 4. Mise à jour de la barre utilisateur (Nom, Rôle, Avatar)
-                    const nameDisplay = document.getElementById('userName');
-                    const avatarDisplay = document.getElementById('userAvatar');
-                    const roleDisplay = document.getElementById('userRole');
-
-                    nameDisplay.innerText = profile.display_name || session.user.email;
-
-                    // Définition du rôle (par défaut 'editeur' si vide)
-                    const userRole = profile.role || "editeur";
-                    if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
-
-                    // Gestion de l'avatar
-                    if (profile.avatar_url) {
-                        avatarDisplay.src = profile.avatar_url;
-                    } else {
-                        avatarDisplay.src = `https://ui-avatars.com/api/?name=${profile.display_name || 'Admin'}&background=4e7994&color=fff`;
-                    }
-                    avatarDisplay.style.display = 'block';
-
-                    // --- 🔴 LOGIQUE D'AFFICHAGE DU BOUTON COMPTES 🔴 ---
-                    // Si le rôle est 'admin', on affiche le bouton caché
-                    if (userRole === 'admin' || userRole === 'administrator') {
-                        const btnAccounts = document.getElementById('btnManageAccounts');
-                        if (btnAccounts) {
-                            btnAccounts.style.display = 'inline-block'; // Ou 'flex' selon votre CSS
-                        }
-                    }
-                    // ----------------------------------------------------
-
-                    // 5. Chargement des données de la page
-                    // IMPORTANT : Si tu es sur la page "Projets", garde loadProjects()
-                    // Si tu es sur la page "News", mets loadNews()
-                    loadProjects();
-
-                } catch (err) {
-                    console.error("Erreur profil:", err);
-                    // En cas d'erreur (ex: pas de profil créé), on affiche quand même l'email
-                    document.getElementById('userName').innerText = session.user.email;
-                    document.getElementById('adminContent').style.display = 'block';
-
-                    loadProjects();
-                }
-            }
-            async function logout() {
-                const { error } = await supabaseClient.auth.signOut();
-                if (error) alert("Erreur lors de la déconnexion");
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
             }
 
-            supabaseClient.auth.onAuthStateChange((event, session) => {
-                if (event === 'SIGNED_OUT') window.location.href = 'index.html';
-            });
+            try {
+                // 2. Récupération du profil
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('display_name, avatar_url, role')
+                    .eq('id', session.user.id)
+                    .single();
 
-            checkUser();
+                if (error) throw error;
+
+                // 3. Affichage du contenu
+                document.getElementById('adminContent').style.display = 'block';
+
+                const nameDisplay = document.getElementById('userName');
+                const avatarDisplay = document.getElementById('userAvatar');
+                const roleDisplay = document.getElementById('userRole');
+
+                nameDisplay.innerText = profile.display_name || session.user.email;
+                const userRole = profile.role || "editeur";
+                if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
+
+                if (profile.avatar_url) {
+                    avatarDisplay.src = profile.avatar_url;
+                } else {
+                    avatarDisplay.src = `https://ui-avatars.com/api/?name=${profile.display_name || 'Admin'}&background=4e7994&color=fff`;
+                }
+                avatarDisplay.style.display = 'block';
+
+                if (userRole === 'admin' || userRole === 'administrator') {
+                    const btnAccounts = document.getElementById('btnManageAccounts');
+                    if (btnAccounts) btnAccounts.style.display = 'inline-block';
+                }
+
+                // --- CORRECTION ICI : loadProjects() devient loadNews() ---
+                loadNews();
+
+            } catch (err) {
+                console.error("Erreur profil:", err);
+                document.getElementById('userName').innerText = session.user.email;
+                document.getElementById('adminContent').style.display = 'block';
+
+                // --- CORRECTION ICI AUSSI ---
+                loadNews();
+            }
+        }
 
         async function logout() {
             const { error } = await supabaseClient.auth.signOut();
@@ -1242,6 +1402,7 @@
             if (event === 'SIGNED_OUT') window.location.href = 'index.html';
         });
 
+        // Lancement unique de la vérification
         checkUser();
 
         // ==========================================

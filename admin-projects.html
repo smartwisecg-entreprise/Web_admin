@@ -808,6 +808,155 @@
             border-color: var(--primary);
             transform: translateY(-1px);
         }
+
+        /* ==========================================================================
+   GESTION RESPONSIVE COMPLÈTE (MOBILE & TABLETTE)
+   ========================================================================== */
+
+        /* --- TABLETTE ET MOBILE (Max 992px) --- */
+        @media (max-width: 992px) {
+            .main-wrapper {
+                padding: 0 15px;
+                /* Marges latérales de sécurité */
+            }
+        }
+
+        /* --- MOBILE LARGE (Max 768px) --- */
+        @media (max-width: 768px) {
+
+            /* 1. Ajustement global */
+            body {
+                padding-bottom: 60px;
+                /* Espace pour scroller tout en bas */
+            }
+
+            .card {
+                padding: 25px 20px;
+                /* Moins de padding dans la carte principale */
+            }
+
+            /* 2. Barre de Navigation (Logout Bar) - C'était le point bloquant */
+            .logout-bar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+                position: relative;
+                /* On enlève le sticky sur mobile si gênant */
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            /* On cache les textes du profil pour gagner de la place, on garde l'avatar */
+            .user-details {
+                display: none;
+            }
+
+            /* Boutons pleine largeur pour le tactile */
+            .nav-link-btn,
+            .accounts-btn,
+            .logout-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                /* Boutons Sauvegarder/Annuler l'un sous l'autre */
+            }
+
+            /* 3. En-tête avec Logo (Renforcement) */
+            .header-container {
+                flex-direction: column;
+                height: auto;
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: none;
+                padding-bottom: 10px;
+            }
+
+            .header-logo {
+                position: static;
+                /* Vital pour ne pas écraser le texte */
+                margin-bottom: 15px;
+                max-height: 80px;
+                /* Logo plus petit */
+            }
+
+            .header-container h1 {
+                font-size: 1.5rem;
+                border-bottom: 2px solid var(--accent);
+                width: 100%;
+                padding-bottom: 15px;
+            }
+
+            /* 4. Formulaires (.row remplace .form-grid) */
+            .row {
+                grid-template-columns: 1fr;
+                /* Force une seule colonne */
+                gap: 15px;
+            }
+
+            .form-group {
+                margin-bottom: 20px;
+                /* Réduit l'espace vertical */
+            }
+
+            /* 5. Liste des Projets */
+            .project-list {
+                /* On force une colonne sur mobile pour avoir de belles grandes cartes */
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .card-preview img {
+                height: 180px;
+                /* Image un peu plus haute pour bien voir */
+            }
+        }
+
+        /* --- PETIT MOBILE (Max 480px) --- */
+        @media (max-width: 480px) {
+
+            /* Design "Bord à bord" pour gagner de la place */
+            .main-wrapper {
+                padding: 0 10px;
+                margin-top: 15px;
+            }
+
+            .card {
+                padding: 20px 15px;
+                border-radius: 8px;
+            }
+
+            /* Adaptation de la Modale Avatar */
+            .modal-card {
+                width: 95%;
+                border-radius: 12px;
+            }
+
+            .modal-footer {
+                grid-template-columns: 1fr;
+                /* Boutons empilés */
+            }
+
+            .img-container {
+                height: 300px;
+                /* Zone de crop moins haute */
+            }
+
+            /* Évite le zoom automatique sur iPhone lors de la saisie */
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
     </style>
 
 </head>
@@ -1453,10 +1602,10 @@
                         const fileExt = file.name.split('.').pop();
                         const cleanName = `proj_${Date.now()}.${fileExt}`;
 
-                        const { error: upError } = await sbClient.storage.from('portfolio-images').upload(cleanName, file);
+                        const { error: upError } = await supabaseClient.storage.from('portfolio-images').upload(cleanName, file);
                         if (upError) throw upError;
 
-                        const { data: publicUrlData } = sbClient.storage.from('portfolio-images').getPublicUrl(cleanName);
+                        const { data: publicUrlData } = supabaseClient.storage.from('portfolio-images').getPublicUrl(cleanName);
                         imageUrl = publicUrlData.publicUrl;
                     }
 
@@ -1513,11 +1662,11 @@
 
                     // 3. Insert or Update
                     if (currentEditId) {
-                        const { error } = await sbClient.from('projects').update(projectData).eq('id', currentEditId);
+                        const { error } = await supabaseClient.from('projects').update(projectData).eq('id', currentEditId);
                         if (error) throw error;
                         status.innerHTML = "✅ Projet modifié avec succès !";
                     } else {
-                        const { error } = await sbClient.from('projects').insert([projectData]);
+                        const { error } = await supabaseClient.from('projects').insert([projectData]);
                         if (error) throw error;
                         status.innerHTML = "✨ Projet ajouté avec succès !";
                     }
@@ -1633,7 +1782,7 @@
             // ============================================================
             async function loadProjects() {
                 const listContainer = document.getElementById('projectsList');
-                const { data, error } = await sbClient
+                const { data, error } = await supabaseClient
                     .from('projects')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -1673,7 +1822,7 @@
 
             window.deleteProject = async (id) => {
                 if (confirm("Voulez-vous vraiment supprimer ce projet ?")) {
-                    await sbClient.from('projects').delete().eq('id', id);
+                    await supabaseClient.from('projects').delete().eq('id', id);
                     if (currentEditId === id) resetForm();
                     loadProjects();
                 }
