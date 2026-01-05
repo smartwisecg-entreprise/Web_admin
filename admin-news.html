@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Actualités Smart Wise</title>
+    <link rel="icon" type="image/png" href="/images/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+    <link rel="shortcut icon" href="/images/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/images/site.webmanifest" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <style>
+        :root {
+            --primary: #4e7994;
+            --primary-dark: #3a5e75;
+            --secondary: #f0f4f8;
+            --accent: #eef2f6;
+            --text-main: #2c3e50;
+            --text-light: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-body: #f1f5f9;
+            --card-bg: #ffffff;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .main-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 40px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        h1,
+        h2 {
+            color: var(--primary);
+            margin-top: 0;
+            font-weight: 700;
+        }
+
+        h1 {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+        }
+
+        /* --- NOUVEAU STYLE EN-TÊTE AVEC LOGO --- */
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Centre le titre */
+            position: relative;
+            /* Nécessaire pour placer le logo en coin */
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            min-height: 60px;
+        }
+
+        .header-logo {
+            position: absolute;
+            /* Sort du flux pour ne pas gêner le centrage du titre */
+            left: 0;
+            max-height: 150px;
+            /* Ajustez la hauteur selon votre logo */
+            width: auto;
+        }
+
+        /* On modifie le H1 pour qu'il s'adapte au conteneur */
+        .header-container h1 {
+            margin: 0;
+            border: none;
+            /* On retire la bordure du H1 car elle est sur le container */
+            padding: 0;
+            text-align: center;
+        }
+
+        /* Version Mobile : On empile pour éviter que le logo n'écrase le texte */
+        @media (max-width: 600px) {
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-logo {
+                position: static;
+                /* Le logo redevient un élément normal */
+                margin-bottom: 10px;
+            }
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .label-en {
+            color: var(--primary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .label-en::before {
+            content: "🇬🇧";
+            font-size: 1rem;
+        }
+
+        /* 1. Configuration de base pour tous les champs */
+        input[type="text"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            font-family: inherit;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            /* Important pour les dimensions */
+        }
+
+        /* 2. FORCER LA SYMÉTRIE ENTRE DATE ET SELECT */
+        input[type="text"],
+        input[type="date"],
+        select {
+            height: 50px;
+            /* Hauteur fixe identique pour tous */
+            padding: 0 15px;
+            /* Padding horizontal uniquement, le vertical est géré par height */
+            line-height: 50px;
+            /* Centre le texte verticalement */
+        }
+
+        /* 3. Style spécifique pour le Textarea (plus haut) */
+        textarea {
+            padding: 12px 15px;
+            line-height: 1.6;
+            min-height: 100px;
+        }
+
+        /* 4. Style "Custom" pour le Select (Enlève la flèche moche par défaut) */
+        select {
+            appearance: none;
+            /* Supprime le style navigateur */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234e7994' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+            padding-right: 40px;
+            /* Laisse de la place pour la flèche */
+            cursor: pointer;
+        }
+
+        /* Focus states */
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(78, 121, 148, 0.15);
+        }
+
+        /* --- NOUVEAU STYLE IMAGE UPLOAD --- */
+        .image-upload-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #eef2f6;
+        }
+
+        .upload-area.has-image {
+            border-style: solid;
+            border-color: var(--primary);
+            padding: 10px;
+        }
+
+        /* L'input réel est caché mais couvre la zone pour être cliquable */
+        #imageFile {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .upload-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .upload-text span {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* Aperçu de l'image */
+        #currentImagePreview {
+            display: none;
+            /* Caché par défaut */
+            max-width: 100%;
+            max-height: 300px;
+            /* On limite la hauteur pour ne pas casser le layout */
+            width: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+            margin-top: 10px;
+        }
+
+        .en-section {
+            background: var(--secondary);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            margin-bottom: 20px;
+        }
+
+        /* Button Group */
+        .btn-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        #btnSave {
+            background: var(--primary);
+        }
+
+        #btnSave:hover {
+            background: var(--primary-dark);
+        }
+
+        #btnCancel {
+            background: #94a3b8;
+            display: none;
+            /* Hidden by default */
+        }
+
+        #btnCancel:hover {
+            background: #64748b;
+        }
+
+        .btn:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 600;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* News List Items */
+        .news-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .news-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .news-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .news-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .news-item img {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .news-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .news-meta {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .badge {
+            background: var(--accent);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .edit-btn {
+            background: #eff6ff;
+            color: var(--primary);
+            border-color: #bfdbfe;
+        }
+
+        .edit-btn:hover {
+            background: #dbeafe;
+        }
+
+        .delete-btn {
+            background: #fef2f2;
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+
+        .delete-btn:hover {
+            background: #fee2e2;
+        }
+
+        /* Empêche de voir le contenu avant la vérification */
+        #adminContent {
+            display: none;
+        }
+
+        /* --- NOUVELLE BARRE DE NAVIGATION ÉPURÉE --- */
+        .logout-bar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            /* Effet de flou moderne */
+            border-bottom: 1px solid var(--accent);
+            padding: 12px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        /* Bouton de navigation entre les pages */
+        .nav-link-btn {
+            color: var(--primary);
+            text-decoration: none;
+            background: var(--secondary);
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-link-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Infos utilisateur */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            /* Espace réduit entre les deux blocs pour la cohésion */
+        }
+
+        #userName {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            opacity: 0.8;
+        }
+
+        /* Bouton déconnexion discret */
+        .logout-btn {
+            background: #fff;
+            color: var(--text-light);
+            border: 1px solid var(--accent);
+            padding: 0 18px;
+            /* Même padding horizontal que le profil */
+            border-radius: 50px;
+            /* Mode pilule identique */
+            height: 45px;
+            /* MÊME HAUTEUR que le profil */
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .logout-btn:hover {
+            background: #fef2f2;
+            /* Rouge très léger */
+            color: var(--danger);
+            border-color: var(--danger);
+            transform: translateY(-1px);
+        }
+
+        /* Correction du padding du body pour que la barre soit bien collée */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            /* Supprime les marges par défaut du navigateur */
+            padding: 0;
+            /* Supprime le padding pour que la barre colle en haut */
+            line-height: 1.6;
+        }
+
+        .main-wrapper {
+            margin-top: 30px;
+            /* Ajoute un peu d'air sous la nouvelle barre */
+        }
+
+        .user-profile-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fff;
+            padding: 5px 18px;
+            /* On équilibre le padding */
+            border-radius: 50px;
+            border: 1px solid var(--accent);
+            height: 45px;
+            /* Hauteur fixe pour assurer le match */
+            box-sizing: border-box;
+        }
+
+        #userAvatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userName {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        .role-badge {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        /* --- STYLE DE LA MODALE AVATAR --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 20px;
+            overflow: hidden;
+            animation: zoomIn 0.3s ease;
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 20px;
+            text-align: center;
+            background: #f8fafc;
+        }
+
+        /* Pour que la zone de sélection du cropper soit ronde */
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 50%;
+            outline: none;
+        }
+
+        /* --- MODIFICATIONS CSS --- */
+        .modal-body {
+            padding: 0;
+            /* On laisse Cropper prendre l'espace */
+            background: #ebebeb;
+            min-height: 300px;
+            max-height: 70vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Important pour Cropper.js : l'image doit être en block et max-width 100% */
+        #modalAvatarPreview {
+            display: block;
+            max-width: 100%;
+        }
+
+        /* Conteneur pour limiter la hauteur de la zone de travail */
+        .img-container {
+            width: 100%;
+            height: 400px;
+            /* Hauteur fixe ou min-height pour la zone de travail */
+            background-color: #f7f7f7;
+        }
+
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .modal-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .upload-btn {
+            background: var(--primary);
+            color: white;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .delete-btn-modal {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .delete-btn-modal:hover {
+            background: #fecaca;
+        }
+
+        /* On rend le profil cliquable dans la barre de nav */
+        .user-profile-box {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .user-profile-box:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
+        }
+
+        .accounts-btn {
+            /* Mêmes dimensions et style de base que logout-btn */
+            background: #fff;
+            color: var(--text-light);
+            border: 1px solid var(--accent);
+            padding: 0 18px;
+            border-radius: 50px;
+            /* Forme Pilule */
+            height: 45px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        /* Au survol : Devient Bleu (Ta couleur Primary) */
+        .accounts-btn:hover {
+            background: #eef2f6;
+            color: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 1. Barre de navigation et déconnexion -->
+    <div class="logout-bar">
+        <div class="nav-links">
+            <!-- Bouton pour aller vers l'autre page admin -->
+            <a href="admin-projects.html" class="nav-link-btn">📁 Gérer les Projets</a>
+        </div>
+        <div class="user-info">
+            <div class="user-profile-box">
+                <img id="userAvatar" src="" alt="" style="display:none;">
+                <div class="user-details">
+                    <span id="userName">Chargement...</span>
+                    <span id="userRole" class="role-badge">Éditeur</span>
+                </div>
+            </div>
+            <button id="btnManageAccounts" onclick="openAccountModal()" class="accounts-btn" style="display:none;">
+                👥 Comptes
+            </button>
+            <button onclick="logout()" class="logout-btn">Déconnexion 🚪</button>
+        </div>
+    </div>
+    <div id="adminContent">
+
+        <div class="main-wrapper">
+            <!-- FORMULAIRE -->
+            <div class="card">
+                <!-- EN-TÊTE DU FORMULAIRE -->
+                <div class="header-container">
+                    <!-- Remplacez l'URL ci-dessous par le lien de votre logo -->
+                    <img src="/images/SMARTWISE_LOGO_FINAL_24_Septembre_2025.svg" alt="Logo Smart Wise"
+                        class="header-logo">
+
+                    <h1 id="formTitle">Publier une Actualité</h1>
+                </div>
+                <!-- CONFIGURATION -->
+                <div class="form-grid">
+                    <div>
+                        <label>Date de publication</label>
+                        <input type="date" id="date">
+                    </div>
+                    <div>
+                        <label>Catégorie</label>
+                        <select id="category" class="form-input" required>
+                            <option value="Produits & Services">Produits & Services</option>
+                            <option value="Entreprise">Entreprise</option>
+                            <option value="Technologie">Technologie</option>
+                            <option value="Info Pratique">Info Pratique</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Événement">Événement</option>
+                            <!-- Toujours utile de garder celui-là à part -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Image de couverture</label>
+                    <div class="image-upload-wrapper">
+                        <div class="upload-area" id="uploadArea">
+                            <div id="uploadPlaceholder">
+                                <div class="upload-icon">☁️</div>
+                                <div class="upload-text">
+                                    <span>Cliquez ici</span> pour ajouter une image
+                                    <br><small style="opacity:0.7">JPG, PNG, WEBP (Max 2MB)</small>
+                                </div>
+                            </div>
+                            <img id="currentImagePreview" alt="Aperçu">
+                        </div>
+                        <input type="file" id="imageFile" accept="image/*">
+                    </div>
+                </div>
+
+                <!-- CONTENU FRANÇAIS -->
+                <div class="form-group">
+                    <label>Titre (FR) *</label>
+                    <input type="text" id="title_fr" placeholder="Ex: Lancement de la nouvelle version">
+                </div>
+
+                <div class="form-group">
+                    <label>Résumé court (FR)</label>
+                    <textarea id="summary_fr" rows="2" placeholder="Une phrase d'accroche..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Contenu de l'article (FR) *</label>
+                    <textarea id="content_fr" rows="6"
+                        placeholder="<p>Le contenu complet de votre article...</p>"></textarea>
+                </div>
+
+                <!-- CONTENU ANGLAIS -->
+                <!-- CONTENU ANGLAIS CORRIGÉ -->
+                <div class="en-section">
+
+                    <!-- On utilise form-group (pleine largeur) au lieu de form-grid -->
+                    <div class="form-group">
+                        <label class="label-en">Title (EN)</label>
+                        <input type="text" id="title_en" placeholder="Optional translation">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label-en">Short Summary (EN)</label>
+                        <textarea id="summary_en" rows="2" placeholder="Optional summary"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label-en">Article Content (EN)</label>
+                        <textarea id="content_en" rows="6" placeholder="Optional content"></textarea>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button id="btnCancel" class="btn">
+                        <span>Annuler</span>
+                    </button>
+                    <button id="btnSave" class="btn">
+                        <span>🚀 Publier l'article</span>
+                    </button>
+                </div>
+
+                <div id="status"></div>
+            </div>
+
+            <!-- LISTE -->
+            <div class="card">
+                <h2>Articles en ligne</h2>
+                <div id="newsList" class="news-list-container">
+                    <p style="color:#94a3b8; text-align:center;">Chargement des articles...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Avatar style "WhatsApp" -->
+    <div id="avatarModal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Photo de profil</h3>
+                <span class="close-modal" onclick="closeAvatarModal()">&times;</span>
+            </div>
+
+            <div class="modal-body">
+                <div class="img-container">
+                    <img id="modalAvatarPreview" src="" alt="Aperçu">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn upload-btn" onclick="triggerFileInput()">
+                    <span>📷</span> Modifier
+                </button>
+                <button class="modal-btn delete-btn-modal" onclick="deleteAvatar()">
+                    <span>🗑️</span> Supprimer
+                </button>
+            </div>
+        </div>
+        <!-- Input invisible pour choisir le fichier -->
+        <input type="file" id="avatarInputHidden" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+    </div>
+
+    <!-- MODALE GESTION COMPTES -->
+    <div id="accountModal" class="modal-overlay" style="display:none;">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Gestion des Accès</h3>
+                <span class="close-modal" onclick="closeAccountModal()">&times;</span>
+            </div>
+
+            <div class="modal-body" style="padding: 20px; background: #fff; min-height: auto;">
+
+                <!-- MENU PRINCIPAL (2 BOUTONS) -->
+                <div id="accMenu" style="display:flex; gap:15px; justify-content:center; padding: 20px 0;">
+                    <button onclick="showAddUser()" class="btn" style="background:var(--primary);">
+                        ➕ Ajouter un compte
+                    </button>
+                    <button onclick="showDeleteUser()" class="btn"
+                        style="background: #fef2f2; color: var(--danger); border: 1px solid var(--danger);">
+                        🗑️ Supprimer / Lister
+                    </button>
+                </div>
+
+                <!-- FORMULAIRE AJOUT (Caché par défaut) -->
+                <div id="accAddForm" class="hidden">
+                    <h4 style="margin-top:0;">Créer un nouvel utilisateur</h4>
+                    <div class="form-group">
+                        <label>Nom d'utilisateur</label>
+                        <input type="text" id="newUsername" placeholder="Ex: JeanDupont">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="text" id="newEmail" placeholder="email@smartwise.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Mot de passe provisoire</label>
+                        <input type="text" id="newPass" placeholder="Min. 6 caractères">
+                    </div>
+                    <div class="form-group">
+                        <label>Rôle</label>
+                        <select id="newRole">
+                            <option value="editeur">Éditeur</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="resetAccView()" class="btn" style="background:#94a3b8;">Retour</button>
+                        <button onclick="createUser()" class="btn" style="background:var(--primary);">Créer</button>
+                    </div>
+                </div>
+
+                <!-- LISTE SUPPRESSION (Caché par défaut) -->
+                <div id="accListPanel" class="hidden">
+                    <h4 style="margin-top:0;">Utilisateurs actifs</h4>
+                    <div id="usersListContainer"
+                        style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+                        <!-- La liste sera injectée ici par JS -->
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="resetAccView()" class="btn" style="background:#94a3b8;">Retour</button>
+                    </div>
+                    <p style="font-size:0.75rem; color:orange; margin-top:10px;">
+                        ⚠️ Note : La suppression ici retire le profil. Pour bloquer définitivement l'accès,
+                        supprimez aussi l'utilisateur dans le tableau de bord Supabase.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURATION SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://neensjugjhkvwcqslicr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZW5zanVnamhrdndjcXNsaWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5Mjg1NzQsImV4cCI6MjA4MTUwNDU3NH0.eDEhhT8HzetCntUZ2LYkZhtoUjSjmFxPQqm03aAL8tU';
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ==========================================
+        // 2. GESTION DE LA MODALE AVATAR AVEC AJUSTEMENT
+        // ==========================================
+
+        let cropper; // Variable globale pour l'outil de recadrage
+        const modalPreview = document.getElementById('modalAvatarPreview');
+        const uploadBtn = document.querySelector('.upload-btn');
+
+        // 1. Ouvrir la modale
+        document.querySelector('.user-profile-box').onclick = function () {
+            const currentSrc = document.getElementById('userAvatar').src;
+            modalPreview.src = currentSrc;
+            document.getElementById('avatarModal').style.display = 'flex';
+        };
+
+        // 2. Fermer la modale et nettoyer
+        function closeAvatarModal() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('avatarModal').style.display = 'none';
+            // Remettre le bouton dans son état initial
+            uploadBtn.innerHTML = "<span>📷</span> Modifier";
+            uploadBtn.onclick = triggerFileInput;
+        }
+
+        // 3. Déclencher le choix de fichier
+        function triggerFileInput() {
+            document.getElementById('avatarInputHidden').click();
+        }
+
+        // 4. Charger l'image dans l'outil d'ajustement (Lancé après choix du fichier)
+        async function uploadAvatar(input) {
+            if (!input.files || input.files.length === 0) return;
+
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                // 1. On affecte la source
+                modalPreview.src = e.target.result;
+
+                // 2. On attend que l'image soit chargée dans le DOM pour lancer Cropper
+                modalPreview.onload = function () {
+                    // Détruire l'ancien cropper s'il existe
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+
+                    // Initialiser Cropper.js
+                    cropper = new Cropper(modalPreview, {
+                        aspectRatio: 1,
+                        viewMode: 1, // Restreint la boîte de recadrage à l'intérieur du canvas
+                        dragMode: 'move',
+                        autoCropArea: 0.8,
+                        restore: false,
+                        guides: true,
+                        center: true,
+                        highlight: false,
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                        toggleDragModeOnDblclick: false,
+                        ready() {
+                            console.log("Cropper est prêt");
+                            // Transformer le bouton
+                            uploadBtn.innerHTML = "<span>✅</span> Valider ce cadrage";
+                            uploadBtn.onclick = confirmCrop;
+                        }
+                    });
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 5. Envoyer l'image recadrée sur Supabase
+        async function confirmCrop() {
+            if (!cropper) return;
+
+            // Récupérer le canvas de l'image recadrée (400x400px pour un bon ratio qualité/poids)
+            cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
+                try {
+                    uploadBtn.innerText = "Chargement...";
+                    uploadBtn.disabled = true;
+
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const userId = session.user.id;
+
+                    // Nom de fichier unique pour éviter le cache navigateur
+                    const fileName = `${userId}/${Date.now()}.png`;
+
+                    // A. Upload vers le bucket 'avatars'
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('avatars')
+                        .upload(fileName, blob, { contentType: 'image/png', upsert: true });
+
+                    if (uploadError) throw uploadError;
+
+                    // B. Récupérer l'URL publique
+                    const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+                    const publicUrl = urlData.publicUrl;
+
+                    // C. Mettre à jour la table 'profiles'
+                    const { error: dbError } = await supabaseClient
+                        .from('profiles')
+                        .update({ avatar_url: publicUrl })
+                        .eq('id', userId);
+
+                    if (dbError) throw dbError;
+
+                    // D. Mise à jour de l'interface en temps réel
+                    document.getElementById('userAvatar').src = publicUrl;
+                    alert("Photo de profil mise à jour !");
+                    closeAvatarModal();
+
+                } catch (error) {
+                    alert("Erreur lors de l'enregistrement : " + error.message);
+                } finally {
+                    uploadBtn.disabled = false;
+                }
+            }, 'image/png');
+        }
+
+        // 6. Supprimer l'avatar (Retour aux initiales)
+        async function deleteAvatar() {
+            if (!confirm("Supprimer votre photo de profil ?")) return;
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const userId = session.user.id;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update({ avatar_url: null })
+                    .eq('id', userId);
+
+                if (error) throw error;
+
+                // Remettre l'avatar par défaut via l'API ui-avatars
+                const name = document.getElementById('userName').innerText;
+                const defaultAvatar = `https://ui-avatars.com/api/?name=${name}&background=4e7994&color=fff`;
+
+                document.getElementById('userAvatar').src = defaultAvatar;
+                alert("Photo supprimée.");
+                closeAvatarModal();
+
+            } catch (error) {
+                alert("Erreur : " + error.message);
+            }
+        }
+
+        // Fermer la modale si on clique à côté
+        window.onclick = function (event) {
+            const modal = document.getElementById('avatarModal');
+            if (event.target == modal) closeAvatarModal();
+        }
+
+        // ==========================================
+        // 3. AUTHENTIFICATION ET PROFIL
+        // ==========================================
+        async function checkUser() {
+                // 1. Vérification de la session
+                const { data: { session } } = await supabaseClient.auth.getSession();
+
+                if (!session) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                try {
+                    // 2. Récupération du profil complet depuis Supabase
+                    const { data: profile, error } = await supabaseClient
+                        .from('profiles')
+                        .select('display_name, avatar_url, role')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (error) throw error;
+
+                    // 3. Affichage du contenu principal
+                    document.getElementById('adminContent').style.display = 'block';
+
+                    // 4. Mise à jour de la barre utilisateur (Nom, Rôle, Avatar)
+                    const nameDisplay = document.getElementById('userName');
+                    const avatarDisplay = document.getElementById('userAvatar');
+                    const roleDisplay = document.getElementById('userRole');
+
+                    nameDisplay.innerText = profile.display_name || session.user.email;
+
+                    // Définition du rôle (par défaut 'editeur' si vide)
+                    const userRole = profile.role || "editeur";
+                    if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
+
+                    // Gestion de l'avatar
+                    if (profile.avatar_url) {
+                        avatarDisplay.src = profile.avatar_url;
+                    } else {
+                        avatarDisplay.src = `https://ui-avatars.com/api/?name=${profile.display_name || 'Admin'}&background=4e7994&color=fff`;
+                    }
+                    avatarDisplay.style.display = 'block';
+
+                    // --- 🔴 LOGIQUE D'AFFICHAGE DU BOUTON COMPTES 🔴 ---
+                    // Si le rôle est 'admin', on affiche le bouton caché
+                    if (userRole === 'admin' || userRole === 'administrator') {
+                        const btnAccounts = document.getElementById('btnManageAccounts');
+                        if (btnAccounts) {
+                            btnAccounts.style.display = 'inline-block'; // Ou 'flex' selon votre CSS
+                        }
+                    }
+                    // ----------------------------------------------------
+
+                    // 5. Chargement des données de la page
+                    // IMPORTANT : Si tu es sur la page "Projets", garde loadProjects()
+                    // Si tu es sur la page "News", mets loadNews()
+                    loadProjects();
+
+                } catch (err) {
+                    console.error("Erreur profil:", err);
+                    // En cas d'erreur (ex: pas de profil créé), on affiche quand même l'email
+                    document.getElementById('userName').innerText = session.user.email;
+                    document.getElementById('adminContent').style.display = 'block';
+
+                    loadProjects();
+                }
+            }
+            async function logout() {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) alert("Erreur lors de la déconnexion");
+            }
+
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_OUT') window.location.href = 'index.html';
+            });
+
+            checkUser();
+
+        async function logout() {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) alert("Erreur lors de la déconnexion");
+        }
+
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT') window.location.href = 'index.html';
+        });
+
+        checkUser();
+
+        // ==========================================
+        // 4. GESTION DES ARTICLES (CRUD)
+        // ==========================================
+        let allNewsData = [];
+        let currentEditId = null;
+        let currentEditImageUrl = "";
+
+        document.getElementById('date').valueAsDate = new Date();
+
+        // SAUVEGARDER (CRÉER OU MODIFIER)
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSave');
+            const status = document.getElementById('status');
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+
+            const titleFR = document.getElementById('title_fr').value;
+            const titleEN = document.getElementById('title_en').value;
+            const summaryFR = document.getElementById('summary_fr').value;
+            const summaryEN = document.getElementById('summary_en').value;
+            const contentFR = document.getElementById('content_fr').value;
+            const contentEN = document.getElementById('content_en').value;
+            const dateVal = document.getElementById('date').value;
+            const catFR = document.getElementById('category').value;
+
+            status.style.display = 'none';
+
+            if (!titleFR) {
+                alert("Le titre en français est obligatoire");
+                document.getElementById('title_fr').focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = currentEditId ? "<span>💾 Enregistrement...</span>" : "<span>⏳ Publication...</span>";
+
+            try {
+                let imageUrl = currentEditImageUrl;
+
+                if (!currentEditId && !file) {
+                    imageUrl = "https://placehold.co/800x400?text=Smart+Wise";
+                }
+
+                if (file) {
+                    const fileExt = file.name.split('.').pop();
+                    const cleanName = Date.now() + Math.random().toString(36).substring(7);
+                    const fileName = `news_${cleanName}.${fileExt}`;
+
+                    const { error: upErr } = await supabaseClient.storage.from('news-images').upload(fileName, file);
+                    if (upErr) throw upErr;
+
+                    const { data: urlData } = supabaseClient.storage.from('news-images').getPublicUrl(fileName);
+                    imageUrl = urlData.publicUrl;
+                }
+
+                const catTranslations = {
+                    "Produits & Services": "Products & Services",
+                    "Entreprise": "Corporate",
+                    "Technologie": "Technology",
+                    "Info Pratique": "Useful Info",
+                    "Impact": "Social Impact",
+                    "Événement": "Event"
+                };
+                const catEN = catTranslations[catFR] || catFR;
+
+                const payload = {
+                    date: dateVal,
+                    image: imageUrl,
+                    title_fr: titleFR,
+                    category_fr: catFR,
+                    summary_fr: summaryFR,
+                    content_fr: contentFR,
+                    title_en: titleEN || titleFR,
+                    category_en: catEN,
+                    summary_en: summaryEN || summaryFR,
+                    content_en: contentEN || contentFR
+                };
+
+                let error = null;
+
+                if (currentEditId) {
+                    const { error: updateErr } = await supabaseClient.from('news').update(payload).eq('id', currentEditId);
+                    error = updateErr;
+                    status.innerText = "✅ Article modifié avec succès !";
+                } else {
+                    const { error: insertErr } = await supabaseClient.from('news').insert([payload]);
+                    error = insertErr;
+                    status.innerText = "✅ Article publié avec succès !";
+                }
+
+                if (error) throw error;
+
+                status.style.background = "#d1fae5";
+                status.style.color = "#065f46";
+                status.style.display = 'block';
+
+                setTimeout(() => { status.style.display = 'none'; }, 2000);
+
+                resetForm();
+                loadNews();
+
+            } catch (e) {
+                console.error(e);
+                status.innerText = "❌ Erreur: " + e.message;
+                status.style.background = "#fee2e2";
+                status.style.color = "#991b1b";
+                status.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                if (!currentEditId) btn.innerHTML = "<span>🚀 Publier l'article</span>";
+            }
+        });
+
+        // LISTER LES ARTICLES
+        async function loadNews() {
+            const div = document.getElementById('newsList');
+            const { data, error } = await supabaseClient.from('news').select('*').order('date', { ascending: false });
+
+            if (error) {
+                div.innerHTML = `<p style="color:red">Erreur: ${error.message}</p>`;
+                return;
+            }
+
+            allNewsData = data || [];
+
+            if (allNewsData.length === 0) {
+                div.innerHTML = `<p style="text-align:center; color:#94a3b8;">Aucun article en ligne.</p>`;
+                return;
+            }
+
+            div.innerHTML = "";
+            allNewsData.forEach(item => {
+                const dateStr = new Date(item.date).toLocaleDateString('fr-FR');
+                div.innerHTML += `
+            <div class="news-item">
+                <div class="news-content">
+                    <img src="${item.image}" alt="Cover" onerror="this.src='https://placehold.co/80?text=IMG'">
+                    <div class="news-info">
+                        <h3>${item.title_fr}</h3>
+                        <div class="news-meta">
+                            <span>📅 ${dateStr}</span>
+                            <span class="badge">${item.category_fr}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="action-btn edit-btn" onclick="editNews(${item.id})">✏️ Modifier</button>
+                    <button class="action-btn delete-btn" onclick="deleteNews(${item.id})">🗑️</button>
+                </div>
+            </div>
+        `;
+            });
+        }
+
+        // FONCTION EDITER
+        window.editNews = (id) => {
+            const article = allNewsData.find(n => n.id === id);
+            if (!article) return;
+
+            currentEditId = id;
+            currentEditImageUrl = article.image;
+
+            document.getElementById('formTitle').innerText = "Modifier l'actualité";
+            document.getElementById('btnSave').innerHTML = "<span>💾 Mettre à jour</span>";
+            document.getElementById('btnSave').style.background = "#f59e0b";
+            document.getElementById('btnCancel').style.display = "flex";
+
+            document.getElementById('date').value = article.date;
+            document.getElementById('category').value = article.category_fr;
+            document.getElementById('title_fr').value = article.title_fr;
+            document.getElementById('summary_fr').value = article.summary_fr || "";
+            document.getElementById('content_fr').value = article.content_fr;
+            document.getElementById('title_en').value = article.title_en || "";
+            document.getElementById('summary_en').value = article.summary_en || "";
+            document.getElementById('content_en').value = article.content_en || "";
+
+            const imgPrev = document.getElementById('currentImagePreview');
+            imgPrev.src = article.image;
+            imgPrev.style.display = 'block';
+
+            // Gérer l'affichage du placeholder
+            document.getElementById('uploadPlaceholder').style.display = 'none';
+            document.getElementById('uploadArea').classList.add('has-image');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // FONCTION RESET
+        function resetForm() {
+            currentEditId = null;
+            currentEditImageUrl = "";
+
+            document.getElementById('formTitle').innerText = "Publier une Actualité";
+            document.getElementById('btnSave').innerHTML = "<span>🚀 Publier l'article</span>";
+            document.getElementById('btnSave').style.background = "var(--primary)";
+            document.getElementById('btnCancel').style.display = "none";
+
+            // Reset Image Preview
+            const preview = document.getElementById('currentImagePreview');
+            preview.style.display = 'none';
+            preview.src = "";
+            document.getElementById('uploadPlaceholder').style.display = 'block';
+            document.getElementById('uploadArea').classList.remove('has-image');
+
+            document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = "");
+            document.getElementById('imageFile').value = "";
+            document.getElementById('date').valueAsDate = new Date();
+        }
+
+        document.getElementById('btnCancel').addEventListener('click', () => { resetForm(); });
+
+        // SUPPRIMER
+        window.deleteNews = async (id) => {
+            if (confirm("Êtes-vous sûr de vouloir supprimer cet article définitivement ?")) {
+                const { error } = await supabaseClient.from('news').delete().eq('id', id);
+                if (error) alert("Erreur lors de la suppression");
+                loadNews();
+                if (currentEditId === id) resetForm();
+            }
+        }
+
+        // GESTION APERÇU IMAGE (FILE READER)
+        document.getElementById('imageFile').addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const preview = document.getElementById('currentImagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    document.getElementById('uploadPlaceholder').style.display = 'none';
+                    document.getElementById('uploadArea').classList.add('has-image');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Initialisation
+        loadNews();
+        // ==========================================
+        // GESTION DES COMPTES (POP-UP)
+        // ==========================================
+
+        // 1. Ouvrir / Fermer la modale
+        function openAccountModal() {
+            resetAccView();
+            document.getElementById('accountModal').style.display = 'flex';
+        }
+
+        function closeAccountModal() {
+            document.getElementById('accountModal').style.display = 'none';
+        }
+
+        // 2. Navigation dans la modale
+        function resetAccView() {
+            document.getElementById('accMenu').style.display = 'flex';
+            document.getElementById('accAddForm').style.display = 'none';
+            document.getElementById('accListPanel').style.display = 'none';
+            document.getElementById('newUsername').value = ''; // <--- RAJOUTER ICI
+            document.getElementById('newEmail').value = '';
+            document.getElementById('newPass').value = '';
+        }
+
+        function showAddUser() {
+            document.getElementById('accMenu').style.display = 'none';
+            document.getElementById('accAddForm').style.display = 'block';
+        }
+
+        async function showDeleteUser() {
+            document.getElementById('accMenu').style.display = 'none';
+            document.getElementById('accListPanel').style.display = 'block';
+            loadUsersList();
+        }
+
+        // 3. CRÉER UN UTILISATEUR
+        async function createUser() {
+            const username = document.getElementById('newUsername').value;
+            const email = document.getElementById('newEmail').value;
+            const password = document.getElementById('newPass').value;
+            const role = document.getElementById('newRole').value;
+
+            if (!email || !password || !username) return alert("Email, Nom et mot de passe requis.");
+
+            // Création Auth Supabase
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    // C'est ici qu'on envoie les métadonnées
+                    data: {
+                        display_name: username, // On envoie le vrai nom saisi
+                        role: role
+                    }
+                }
+            });
+
+            if (error) {
+                alert("Erreur : " + error.message);
+            } else {
+                // Note: Si "Confirm Email" est activé dans Supabase, l'utilisateur ne pourra pas se connecter tout de suite.
+                alert("✅ Utilisateur créé ! S'il ne peut pas se connecter, vérifiez si un mail de confirmation a été envoyé.");
+                resetAccView();
+            }
+        }
+
+        // 4. LISTER ET SUPPRIMER (Profils)
+        async function loadUsersList() {
+            const container = document.getElementById('usersListContainer');
+            container.innerHTML = "Chargement...";
+
+            // On récupère la liste depuis la table 'profiles'
+            const { data: profiles, error } = await supabaseClient
+                .from('profiles')
+                .select('id, display_name, role, email'); // Assurez-vous d'avoir une colonne email dans profiles ou utilisez display_name
+
+            if (error) {
+                container.innerHTML = "Erreur de chargement.";
+                return;
+            }
+
+            let html = '<ul style="list-style:none; padding:0; margin:0;">';
+            profiles.forEach(p => {
+                html += `
+                <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>${p.display_name || 'Utilisateur'}</strong> <br>
+                        <small style="color:#666">${p.role || 'Editeur'}</small>
+                    </div>
+                    <button onclick="deleteUserProfile('${p.id}')" style="background:#fee2e2; color:red; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                        🗑️
+                    </button>
+                </li>
+            `;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        async function deleteUserProfile(id) {
+            if (!confirm("Voulez-vous supprimer ce profil de l'affichage ? (L'accès login devra être coupé sur Supabase)")) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                alert("Erreur : " + error.message);
+            } else {
+                loadUsersList(); // Recharger la liste
+            }
+        }
+    </script>
+</body>
+
+</html>

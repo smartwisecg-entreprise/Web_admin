@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Smart Wise Admin</title>
+    <link rel="icon" type="image/png" href="/images/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+    <link rel="shortcut icon" href="/images/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
+    <link rel="manifest" href="/images/site.webmanifest" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #4e7994;
+            --primary-dark: #3a5e75;
+            --bg-body: #f1f5f9;
+            --text-main: #2c3e50;
+            --text-light: #64748b;
+            --danger: #ef4444;
+            --radius: 12px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-body);
+            background-image: radial-gradient(circle at 2% 10%, rgba(78, 121, 148, 0.05) 0%, transparent 50%),
+                              radial-gradient(circle at 95% 90%, rgba(78, 121, 148, 0.05) 0%, transparent 50%);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .logo {
+            max-height: 150px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        input {
+            width: 100%;
+            height: 50px;
+            padding: 0 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(78, 121, 148, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(78, 121, 148, 0.2);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        #error {
+            background: #fef2f2;
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-top: 20px;
+            display: none;
+            border: 1px solid #fecaca;
+        }
+
+        .footer-text {
+            margin-top: 25px;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        <div class="auth-card">
+            <!-- LOGO SMART WISE -->
+            <img src="/images/SMARTWISE_LOGO_FINAL_24_Septembre_2025.svg" alt="Smart Wise Logo" class="logo">
+            
+            <h2>Administration</h2>
+            <p>Connectez-vous pour gérer votre contenu.</p>
+
+            <div class="form-group">
+                <label>Adresse Email</label>
+                <input type="email" id="email" placeholder="nom@exemple.com" required>
+            </div>
+
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+
+            <button id="btnLogin" class="btn-login">Se connecter</button>
+
+            <div id="error"></div>
+
+            <div class="footer-text">
+                &copy; 2025 Smart Wise. Tous droits réservés.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://neensjugjhkvwcqslicr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZW5zanVnamhrdndjcXNsaWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5Mjg1NzQsImV4cCI6MjA4MTUwNDU3NH0.eDEhhT8HzetCntUZ2LYkZhtoUjSjmFxPQqm03aAL8tU';
+        
+        const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const btn = document.getElementById('btnLogin');
+        const errorDiv = document.getElementById('error');
+
+        btn.onclick = async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Reset UI
+            errorDiv.style.display = 'none';
+            btn.innerText = "Vérification...";
+            btn.disabled = true;
+
+            const { error } = await sbClient.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                errorDiv.innerText = "Identifiants incorrects ou erreur serveur.";
+                errorDiv.style.display = 'block';
+                btn.innerText = "Se connecter";
+                btn.disabled = false;
+            } else {
+                window.location.href = 'admin-news.html';
+            }
+        };
+
+        // Redirection auto si déjà logué
+        sbClient.auth.onAuthStateChange((event, session) => {
+            if (session) window.location.href = 'admin-news.html';
+        });
+    </script>
+</body>
+
+</html>
