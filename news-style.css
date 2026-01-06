@@ -1,0 +1,922 @@
+ :root {
+            --primary: #4e7994;
+            --primary-dark: #3a5e75;
+            --secondary: #f0f4f8;
+            --accent: #eef2f6;
+            --text-main: #2c3e50;
+            --text-light: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-body: #f1f5f9;
+            --card-bg: #ffffff;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .main-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 40px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        h1,
+        h2 {
+            color: var(--primary);
+            margin-top: 0;
+            font-weight: 700;
+        }
+
+        h1 {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+        }
+
+        /* --- NOUVEAU STYLE EN-TÊTE AVEC LOGO --- */
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Centre le titre */
+            position: relative;
+            /* Nécessaire pour placer le logo en coin */
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            min-height: 60px;
+        }
+
+        .header-logo {
+            position: absolute;
+            /* Sort du flux pour ne pas gêner le centrage du titre */
+            left: 0;
+            max-height: 150px;
+            /* Ajustez la hauteur selon votre logo */
+            width: auto;
+        }
+
+        /* On modifie le H1 pour qu'il s'adapte au conteneur */
+        .header-container h1 {
+            margin: 0;
+            border: none;
+            /* On retire la bordure du H1 car elle est sur le container */
+            padding: 0;
+            text-align: center;
+        }
+
+        /* Version Mobile : On empile pour éviter que le logo n'écrase le texte */
+        @media (max-width: 600px) {
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-logo {
+                position: static;
+                /* Le logo redevient un élément normal */
+                margin-bottom: 10px;
+            }
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .label-en {
+            color: var(--primary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .label-en::before {
+            content: "🇬🇧";
+            font-size: 1rem;
+        }
+
+        /* 1. Configuration de base pour tous les champs */
+        input[type="text"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            font-family: inherit;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            /* Important pour les dimensions */
+        }
+
+        /* 2. FORCER LA SYMÉTRIE ENTRE DATE ET SELECT */
+        input[type="text"],
+        input[type="date"],
+        select {
+            height: 50px;
+            /* Hauteur fixe identique pour tous */
+            padding: 0 15px;
+            /* Padding horizontal uniquement, le vertical est géré par height */
+            line-height: 50px;
+            /* Centre le texte verticalement */
+        }
+
+        /* 3. Style spécifique pour le Textarea (plus haut) */
+        textarea {
+            padding: 12px 15px;
+            line-height: 1.6;
+            min-height: 100px;
+        }
+
+        /* 4. Style "Custom" pour le Select (Enlève la flèche moche par défaut) */
+        select {
+            appearance: none;
+            /* Supprime le style navigateur */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234e7994' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+            padding-right: 40px;
+            /* Laisse de la place pour la flèche */
+            cursor: pointer;
+        }
+
+        /* Focus states */
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(78, 121, 148, 0.15);
+        }
+
+        /* --- NOUVEAU STYLE IMAGE UPLOAD --- */
+        .image-upload-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #eef2f6;
+        }
+
+        .upload-area.has-image {
+            border-style: solid;
+            border-color: var(--primary);
+            padding: 10px;
+        }
+
+        /* L'input réel est caché mais couvre la zone pour être cliquable */
+        #imageFile {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .upload-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .upload-text span {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* Aperçu de l'image */
+        #currentImagePreview {
+            display: none;
+            /* Caché par défaut */
+            max-width: 100%;
+            max-height: 300px;
+            /* On limite la hauteur pour ne pas casser le layout */
+            width: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+            margin-top: 10px;
+        }
+
+        .en-section {
+            background: var(--secondary);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            margin-bottom: 20px;
+        }
+
+        /* Button Group */
+        .btn-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        #btnSave {
+            background: var(--primary);
+        }
+
+        #btnSave:hover {
+            background: var(--primary-dark);
+        }
+
+        #btnCancel {
+            background: #94a3b8;
+            display: none;
+            /* Hidden by default */
+        }
+
+        #btnCancel:hover {
+            background: #64748b;
+        }
+
+        .btn:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 600;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* News List Items */
+        .news-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .news-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .news-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .news-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .news-item img {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .news-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .news-meta {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .badge {
+            background: var(--accent);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .edit-btn {
+            background: #eff6ff;
+            color: var(--primary);
+            border-color: #bfdbfe;
+        }
+
+        .edit-btn:hover {
+            background: #dbeafe;
+        }
+
+        .delete-btn {
+            background: #fef2f2;
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+
+        .delete-btn:hover {
+            background: #fee2e2;
+        }
+
+        /* Empêche de voir le contenu avant la vérification */
+        #adminContent {
+            display: none;
+        }
+
+        /* --- NOUVELLE BARRE DE NAVIGATION ÉPURÉE --- */
+        .logout-bar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            /* Effet de flou moderne */
+            border-bottom: 1px solid var(--accent);
+            padding: 12px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        /* Bouton de navigation entre les pages */
+        .nav-link-btn {
+            color: var(--primary);
+            text-decoration: none;
+            background: var(--secondary);
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-link-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Infos utilisateur */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            /* Espace réduit entre les deux blocs pour la cohésion */
+        }
+
+        #userName {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            opacity: 0.8;
+        }
+
+        /* Bouton déconnexion discret */
+        .logout-btn {
+            background: #fff;
+            color: var(--text-light);
+            border: 1px solid var(--accent);
+            padding: 0 18px;
+            /* Même padding horizontal que le profil */
+            border-radius: 50px;
+            /* Mode pilule identique */
+            height: 45px;
+            /* MÊME HAUTEUR que le profil */
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .logout-btn:hover {
+            background: #fef2f2;
+            /* Rouge très léger */
+            color: var(--danger);
+            border-color: var(--danger);
+            transform: translateY(-1px);
+        }
+
+        /* Correction du padding du body pour que la barre soit bien collée */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            /* Supprime les marges par défaut du navigateur */
+            padding: 0;
+            /* Supprime le padding pour que la barre colle en haut */
+            line-height: 1.6;
+        }
+
+        .main-wrapper {
+            margin-top: 30px;
+            /* Ajoute un peu d'air sous la nouvelle barre */
+        }
+
+        .user-profile-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fff;
+            padding: 5px 18px;
+            /* On équilibre le padding */
+            border-radius: 50px;
+            border: 1px solid var(--accent);
+            height: 45px;
+            /* Hauteur fixe pour assurer le match */
+            box-sizing: border-box;
+        }
+
+        #userAvatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userName {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            line-height: 1.2;
+        }
+
+        .role-badge {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        /* --- STYLE DE LA MODALE AVATAR --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-card {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 20px;
+            overflow: hidden;
+            animation: zoomIn 0.3s ease;
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 20px;
+            text-align: center;
+            background: #f8fafc;
+        }
+
+        /* Pour que la zone de sélection du cropper soit ronde */
+        .cropper-view-box,
+        .cropper-face {
+            border-radius: 50%;
+            outline: none;
+        }
+
+        /* --- MODIFICATIONS CSS --- */
+        .modal-body {
+            padding: 0;
+            /* On laisse Cropper prendre l'espace */
+            background: #ebebeb;
+            min-height: 300px;
+            max-height: 70vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Important pour Cropper.js : l'image doit être en block et max-width 100% */
+        #modalAvatarPreview {
+            display: block;
+            max-width: 100%;
+        }
+
+        /* Conteneur pour limiter la hauteur de la zone de travail */
+        .img-container {
+            width: 100%;
+            height: 400px;
+            /* Hauteur fixe ou min-height pour la zone de travail */
+            background-color: #f7f7f7;
+        }
+
+        .modal-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .modal-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .upload-btn {
+            background: var(--primary);
+            color: white;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .delete-btn-modal {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .delete-btn-modal:hover {
+            background: #fecaca;
+        }
+
+        /* On rend le profil cliquable dans la barre de nav */
+        .user-profile-box {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .user-profile-box:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
+        }
+
+        .accounts-btn {
+            /* Mêmes dimensions et style de base que logout-btn */
+            background: #fff;
+            color: var(--text-light);
+            border: 1px solid var(--accent);
+            padding: 0 18px;
+            border-radius: 50px;
+            /* Forme Pilule */
+            height: 45px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        /* Au survol : Devient Bleu (Ta couleur Primary) */
+        .accounts-btn:hover {
+            background: #eef2f6;
+            color: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        /* ==========================================================================
+   GESTION RESPONSIVE (MOBILE & TABLETTE)
+   ========================================================================== */
+
+        /* --- TABLETTE ET MOBILE (Max 992px) --- */
+        @media (max-width: 992px) {
+            .main-wrapper {
+                padding: 0 15px;
+            }
+        }
+
+        /* --- MOBILE LARGE (Max 768px) --- */
+        @media (max-width: 768px) {
+
+            /* 1. Ajustement global du Body et du Wrapper */
+            body {
+                padding-bottom: 40px;
+                /* Espace pour le scroll en bas */
+            }
+
+            .card {
+                padding: 25px 20px;
+                /* Réduction du padding interne des cartes */
+            }
+
+            /* 2. Barre de Navigation (Logout Bar) */
+            .logout-bar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+                /* La hauteur doit s'adapter au contenu empilé */
+                position: relative;
+                /* On enlève le sticky sur mobile si ça prend trop de place */
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: center;
+                /* Centre les éléments */
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            /* On cache le nom et le rôle pour gagner de la place, on garde l'avatar */
+            .user-details {
+                display: none;
+            }
+
+            /* Si vous voulez garder le nom, commentez le display: none ci-dessus et utilisez : */
+            /*
+    .user-details {
+        text-align: center;
+    }
+    */
+
+            /* Boutons de la nav en pleine largeur ou centrés */
+            .nav-link-btn,
+            .accounts-btn,
+            .logout-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                /* Boutons Sauvegarder/Annuler l'un sous l'autre */
+            }
+
+            /* 3. En-tête avec Logo */
+            .header-container {
+                flex-direction: column;
+                height: auto;
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: none;
+                /* On allège visuellement */
+            }
+
+            .header-logo {
+                position: static;
+                /* Annule le positionnement absolu qui cassait tout */
+                transform: none;
+                margin-bottom: 15px;
+                max-height: 80px;
+                /* Logo plus petit sur mobile */
+            }
+
+            .header-container h1 {
+                font-size: 1.4rem;
+                /* Titre plus petit */
+                padding-bottom: 10px;
+                border-bottom: 2px solid var(--accent);
+                /* On remet la bordure sous le titre */
+                width: 100%;
+            }
+
+            /* 4. Formulaires */
+            .form-grid {
+                grid-template-columns: 1fr;
+                /* Une seule colonne force */
+                gap: 15px;
+            }
+
+            /* 5. Liste des News */
+            .news-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .news-content {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .news-item img {
+                width: 100%;
+                max-width: 200px;
+                /* L'image ne devient pas géante */
+                height: 120px;
+                /* Un peu plus haut */
+                margin-bottom: 10px;
+            }
+
+            .actions {
+                width: 100%;
+                justify-content: space-between;
+                border-top: 1px solid #f1f5f9;
+                padding-top: 15px;
+                margin-top: 5px;
+            }
+
+            .action-btn {
+                flex: 1;
+                /* Les boutons prennent toute la largeur disponible */
+                justify-content: center;
+                display: flex;
+            }
+        }
+
+        /* --- PETIT MOBILE (Max 480px) --- */
+        @media (max-width: 480px) {
+            .card {
+                padding: 20px 15px;
+                border-radius: 0;
+                /* Design "Edge to Edge" sur très petits écrans */
+                border-left: none;
+                border-right: none;
+                box-shadow: none;
+            }
+
+            .main-wrapper {
+                gap: 15px;
+                margin-top: 10px;
+            }
+
+            /* Ajustement Modale Avatar */
+            .modal-card {
+                width: 95%;
+                border-radius: 12px;
+            }
+
+            .modal-footer {
+                grid-template-columns: 1fr;
+                /* Boutons l'un sous l'autre */
+            }
+
+            .img-container {
+                height: 300px;
+                /* Moins haut sur petit écran */
+            }
+
+            /* Force la taille de police pour éviter le zoom automatique sur iPhone */
+            input,
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
