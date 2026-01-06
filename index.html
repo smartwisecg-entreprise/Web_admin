@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - Smart Wise Admin</title>
     <link rel="icon" type="image/png" href="/images/favicon-96x96.png" sizes="96x96" />
@@ -33,7 +34,7 @@
             font-family: 'Poppins', sans-serif;
             background: var(--bg-body);
             background-image: radial-gradient(circle at 2% 10%, rgba(78, 121, 148, 0.05) 0%, transparent 50%),
-                              radial-gradient(circle at 95% 90%, rgba(78, 121, 148, 0.05) 0%, transparent 50%);
+                radial-gradient(circle at 95% 90%, rgba(78, 121, 148, 0.05) 0%, transparent 50%);
             height: 100vh;
             margin: 0;
             display: flex;
@@ -156,7 +157,7 @@
         <div class="auth-card">
             <!-- LOGO SMART WISE -->
             <img src="/images/SMARTWISE_LOGO_FINAL_24_Septembre_2025.svg" alt="Smart Wise Logo" class="logo">
-            
+
             <h2>Administration</h2>
             <p>Connectez-vous pour gérer votre contenu.</p>
 
@@ -183,7 +184,7 @@
     <script>
         const SUPABASE_URL = 'https://neensjugjhkvwcqslicr.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZW5zanVnamhrdndjcXNsaWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5Mjg1NzQsImV4cCI6MjA4MTUwNDU3NH0.eDEhhT8HzetCntUZ2LYkZhtoUjSjmFxPQqm03aAL8tU';
-        
+
         const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const btn = document.getElementById('btnLogin');
         const errorDiv = document.getElementById('error');
