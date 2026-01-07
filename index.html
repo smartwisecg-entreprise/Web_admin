@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png" />
     <link rel="manifest" href="/images/site.webmanifest" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
     <style>
         :root {
             --primary: #4e7994;
@@ -156,22 +156,71 @@
     <div class="login-container">
         <div class="auth-card">
             <!-- LOGO SMART WISE -->
-            <img src="/images/SMARTWISE_LOGO_FINAL_24_Septembre_2025.svg" alt="Smart Wise Logo" class="logo">
+            <img src="/images/logo_spirale.png" alt="Smart Wise Logo" class="logo">
 
             <h2>Administration</h2>
             <p>Connectez-vous pour gérer votre contenu.</p>
 
             <div class="form-group">
                 <label>Adresse Email</label>
+                <!-- Ajout d'un ID spécifique pour le script -->
                 <input type="email" id="email" placeholder="nom@exemple.com" required>
             </div>
 
             <div class="form-group">
                 <label>Mot de passe</label>
+                <!-- Ajout d'un ID spécifique pour le script -->
                 <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            <!-- Modale Changement de Mot de Passe Forcé -->
+            <div id="changePassModal"
+                style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
+                <div style="background:white; padding:30px; border-radius:8px; width:300px; text-align:center;">
+                    <h3>Première connexion</h3>
+                    <p>Pour votre sécurité, vous devez changer votre mot de passe par défaut.</p>
+
+                    <input type="password" id="newFirstPassword" placeholder="Nouveau mot de passe"
+                        style="width:100%; padding:10px; margin-bottom:10px;">
+                    <input type="password" id="confirmFirstPassword" placeholder="Confirmer le mot de passe"
+                        style="width:100%; padding:10px; margin-bottom:20px;">
+
+                    <div id="passMsg" style="color:red; margin-bottom:10px; font-size:12px;"></div>
+
+                    <button id="btnSavePass" onclick="updateDefaultPassword()"
+                        style="padding:10px 20px; background:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;">
+                        Valider le changement
+                    </button>
+                </div>
+            </div>
+            <!-- Modale Demande de Réinitialisation -->
+            <div id="forgotPassModal"
+                style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
+                <div
+                    style="background:white; padding:30px; border-radius:8px; width:300px; text-align:center; position:relative;">
+                    <span onclick="document.getElementById('forgotPassModal').style.display='none'"
+                        style="position:absolute; top:10px; right:15px; cursor:pointer; font-weight:bold;">✕</span>
+
+                    <h3>Réinitialisation</h3>
+                    <p style="font-size:14px; color:#555;">Entrez votre email pour recevoir un lien de réinitialisation.
+                    </p>
+
+                    <input type="email" id="forgotEmail" placeholder="Votre email"
+                        style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+
+                    <button onclick="sendResetLink()" id="btnSendReset"
+                        style="width:100%; padding:10px; background:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;">Envoyer
+                        le lien</button>
+
+                    <div id="forgotMsg" style="margin-top:10px; font-size:12px;"></div>
+                </div>
             </div>
 
             <button id="btnLogin" class="btn-login">Se connecter</button>
+            <!-- Lien Mot de passe oublié -->
+            <div style="margin-top: 10px; font-size: 14px;">
+                <a href="#" onclick="openForgotModal()" style="color:#2563eb; text-decoration:none;">Mot de passe oublié
+                    ?</a>
+            </div>
 
             <div id="error"></div>
 
@@ -181,19 +230,36 @@
         </div>
     </div>
 
+
     <script>
+        // 1. CONFIGURATION SUPABASE
         const SUPABASE_URL = 'https://neensjugjhkvwcqslicr.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZW5zanVnamhrdndjcXNsaWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5Mjg1NzQsImV4cCI6MjA4MTUwNDU3NH0.eDEhhT8HzetCntUZ2LYkZhtoUjSjmFxPQqm03aAL8tU';
+        const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
 
-        const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // 2. ÉLÉMENTS DOM
         const btn = document.getElementById('btnLogin');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
         const errorDiv = document.getElementById('error');
 
-        btn.onclick = async () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        // 3. FONCTION DE CONNEXION (Simplifiée pour laisser le Listener gérer la suite)
+        const handleLogin = async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
 
-            // Reset UI
+            if (!email || !password) {
+                errorDiv.innerText = "Veuillez remplir tous les champs.";
+                errorDiv.style.display = 'block';
+                return;
+            }
+
             errorDiv.style.display = 'none';
             btn.innerText = "Vérification...";
             btn.disabled = true;
@@ -201,19 +267,134 @@
             const { error } = await sbClient.auth.signInWithPassword({ email, password });
 
             if (error) {
-                errorDiv.innerText = "Identifiants incorrects ou erreur serveur.";
+                errorDiv.innerText = "Identifiants incorrects ou erreur réseau.";
                 errorDiv.style.display = 'block';
                 btn.innerText = "Se connecter";
                 btn.disabled = false;
-            } else {
-                window.location.href = 'admin-news.html';
             }
+            // Si succès, le "onAuthStateChange" plus bas prendra le relais automatiquement
         };
 
-        // Redirection auto si déjà logué
-        sbClient.auth.onAuthStateChange((event, session) => {
-            if (session) window.location.href = 'admin-news.html';
+        // 4. VÉRIFICATION DU PROFIL ET REDIRECTION (Centralisée)
+        async function processUserRedirection(user) {
+            try {
+                const { data: profile, error } = await sbClient
+                    .from('profiles')
+                    .select('must_change_password')
+                    .eq('id', user.id)
+                    .maybeSingle(); // Utilisation de maybeSingle pour éviter les crashs si profil absent
+
+                if (profile && profile.must_change_password) {
+                    btn.innerText = "Se connecter";
+                    btn.disabled = false;
+                    document.getElementById('changePassModal').style.display = 'flex';
+                } else {
+                    window.location.replace('admin-news.html');
+                }
+            } catch (err) {
+                console.error("Erreur redirection:", err);
+                window.location.replace('admin-news.html');
+            }
+        }
+
+        // 5. GESTION "MOT DE PASSE OUBLIÉ"
+        function openForgotModal() {
+            document.getElementById('forgotPassModal').style.display = 'flex';
+            document.getElementById('forgotEmail').value = document.getElementById('email').value;
+        }
+
+        async function sendResetLink() {
+            const email = document.getElementById('forgotEmail').value;
+            const msgDiv = document.getElementById('forgotMsg');
+            const btnSend = document.getElementById('btnSendReset');
+
+            if (!email) return alert("Veuillez entrer un email.");
+
+            btnSend.disabled = true;
+            btnSend.innerText = "Envoi...";
+
+            const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.href
+            });
+
+            if (error) {
+                msgDiv.style.color = 'red';
+                msgDiv.innerText = "Erreur : " + error.message;
+                btnSend.disabled = false;
+                btnSend.innerText = "Envoyer le lien";
+            } else {
+                msgDiv.style.color = 'green';
+                msgDiv.innerText = "Email envoyé ! Vérifiez votre boîte de réception.";
+                setTimeout(() => {
+                    document.getElementById('forgotPassModal').style.display = 'none';
+                    btnSend.disabled = false;
+                    btnSend.innerText = "Envoyer le lien";
+                    msgDiv.innerText = "";
+                }, 3000);
+            }
+        }
+
+        // 6. MISE À JOUR DU MOT DE PASSE (Première connexion ET Reset)
+        async function updateDefaultPassword() {
+            const newPass = document.getElementById('newFirstPassword').value;
+            const confirmPass = document.getElementById('confirmFirstPassword').value;
+            const msgDiv = document.getElementById('passMsg');
+            const btnSave = document.getElementById('btnSavePass');
+
+            if (newPass.length < 6) {
+                msgDiv.innerText = "Minimum 6 caractères.";
+                return;
+            }
+            if (newPass !== confirmPass) {
+                msgDiv.innerText = "Les mots de passe diffèrent.";
+                return;
+            }
+
+            msgDiv.style.color = "blue";
+            msgDiv.innerText = "Mise à jour...";
+            btnSave.disabled = true;
+
+            const { error: authError } = await sbClient.auth.updateUser({ password: newPass });
+
+            if (authError) {
+                msgDiv.style.color = "red";
+                msgDiv.innerText = authError.message;
+                btnSave.disabled = false;
+                return;
+            }
+
+            const { data: { user } } = await sbClient.auth.getUser();
+            if (user) {
+                await sbClient.from('profiles').update({ must_change_password: false }).eq('id', user.id);
+            }
+
+            msgDiv.style.color = "green";
+            msgDiv.innerText = "Succès ! Redirection...";
+            setTimeout(() => { window.location.replace('admin-news.html'); }, 1500);
+        }
+
+        // 7. LISTENERS
+        btn.onclick = handleLogin;
+
+        // 8. LE CŒUR : GESTION DES ÉVÉNEMENTS SUPABASE
+        sbClient.auth.onAuthStateChange(async (event, session) => {
+            console.log("Evénement Auth:", event);
+
+            if (event === 'PASSWORD_RECOVERY') {
+                document.getElementById('changePassModal').style.display = 'flex';
+                document.querySelector('#changePassModal h3').innerText = "Nouveau mot de passe";
+                document.querySelector('#changePassModal p').innerText = "Créez votre nouveau mot de passe.";
+            }
+
+            else if (event === 'SIGNED_IN' && session) {
+                // Si on est en train de faire une récupération de mot de passe, on ne redirige pas tout de suite
+                if (window.location.hash.includes('type=recovery')) return;
+
+                // Sinon, on vérifie si changement de mdp requis
+                await processUserRedirection(session.user);
+            }
         });
+
     </script>
 </body>
 
