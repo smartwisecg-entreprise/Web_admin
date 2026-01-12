@@ -7,38 +7,55 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
-// 2. GESTION DE LA MODALE AVATAR AVEC AJUSTEMENT
+// 2. GESTION DE LA MODALE AVATAR AVEC AJUSTEMENT (CORRIGÉ)
 // ==========================================
 
-let cropper; // Variable globale pour l'outil de recadrage
+let cropper; 
 const modalPreview = document.getElementById('modalAvatarPreview');
 const uploadBtn = document.querySelector('.upload-btn');
+const fileInput = document.getElementById('avatarInputHidden'); // Référence à l'input
 
 // 1. Ouvrir la modale
 document.querySelector('.user-profile-box').onclick = function () {
     const currentSrc = document.getElementById('userAvatar').src;
+    
+    // On s'assure qu'aucun ancien événement onload ne traîne
+    modalPreview.onload = null;
+    
     modalPreview.src = currentSrc;
     document.getElementById('avatarModal').style.display = 'flex';
 };
 
-// 2. Fermer la modale et nettoyer
+// 2. Fermer la modale et TOUT nettoyer (C'est ici que la correction opère)
 function closeAvatarModal() {
+    // A. Détruire le cropper s'il existe
     if (cropper) {
         cropper.destroy();
         cropper = null;
     }
+
+    // B. IMPORTANT : Supprimer l'événement onload de l'image
+    // Sinon, au prochain changement de src, le cropper se relancera tout seul
+    modalPreview.onload = null;
+
+    // C. Réinitialiser l'input file pour permettre de re-sélectionner le même fichier si besoin
+    if (fileInput) fileInput.value = "";
+
+    // D. Cacher la modale
     document.getElementById('avatarModal').style.display = 'none';
-    // Remettre le bouton dans son état initial
+
+    // E. Remettre le bouton dans son état initial "Modifier"
     uploadBtn.innerHTML = "<span>📷</span> Modifier";
+    uploadBtn.disabled = false; // Au cas où il serait resté bloqué
     uploadBtn.onclick = triggerFileInput;
 }
 
 // 3. Déclencher le choix de fichier
 function triggerFileInput() {
-    document.getElementById('avatarInputHidden').click();
+    fileInput.click();
 }
 
-// 4. Charger l'image dans l'outil d'ajustement (Lancé après choix du fichier)
+// 4. Charger l'image dans l'outil d'ajustement
 async function uploadAvatar(input) {
     if (!input.files || input.files.length === 0) return;
 
@@ -46,12 +63,9 @@ async function uploadAvatar(input) {
     const reader = new FileReader();
 
     reader.onload = function (e) {
-        // 1. On affecte la source
-        modalPreview.src = e.target.result;
-
-        // 2. On attend que l'image soit chargée dans le DOM pour lancer Cropper
+        // On définit ce qui se passe quand l'image est chargée
         modalPreview.onload = function () {
-            // Détruire l'ancien cropper s'il existe
+            // Sécurité : détruire l'ancien cropper s'il y en a un
             if (cropper) {
                 cropper.destroy();
             }
@@ -59,7 +73,7 @@ async function uploadAvatar(input) {
             // Initialiser Cropper.js
             cropper = new Cropper(modalPreview, {
                 aspectRatio: 1,
-                viewMode: 1, // Restreint la boîte de recadrage à l'intérieur du canvas
+                viewMode: 1,
                 dragMode: 'move',
                 autoCropArea: 0.8,
                 restore: false,
@@ -71,12 +85,15 @@ async function uploadAvatar(input) {
                 toggleDragModeOnDblclick: false,
                 ready() {
                     console.log("Cropper est prêt");
-                    // Transformer le bouton
+                    // C'est ici que le bouton change
                     uploadBtn.innerHTML = "<span>✅</span> Valider ce cadrage";
                     uploadBtn.onclick = confirmCrop;
                 }
             });
         };
+
+        // On lance le chargement de l'image (ce qui déclenchera le onload ci-dessus)
+        modalPreview.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }
@@ -85,7 +102,6 @@ async function uploadAvatar(input) {
 async function confirmCrop() {
     if (!cropper) return;
 
-    // Récupérer le canvas de l'image recadrée (400x400px pour un bon ratio qualité/poids)
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
         try {
             uploadBtn.innerText = "Chargement...";
@@ -93,22 +109,19 @@ async function confirmCrop() {
 
             const { data: { session } } = await supabaseClient.auth.getSession();
             const userId = session.user.id;
-
-            // Nom de fichier unique pour éviter le cache navigateur
+            
+            // Nom unique avec timestamp
             const fileName = `${userId}/${Date.now()}.png`;
 
-            // A. Upload vers le bucket 'avatars'
             const { error: uploadError } = await supabaseClient.storage
                 .from('avatars')
                 .upload(fileName, blob, { contentType: 'image/png', upsert: true });
 
             if (uploadError) throw uploadError;
 
-            // B. Récupérer l'URL publique
             const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
             const publicUrl = urlData.publicUrl;
 
-            // C. Mettre à jour la table 'profiles'
             const { error: dbError } = await supabaseClient
                 .from('profiles')
                 .update({ avatar_url: publicUrl })
@@ -116,18 +129,22 @@ async function confirmCrop() {
 
             if (dbError) throw dbError;
 
-            // D. Mise à jour de l'interface en temps réel
             document.getElementById('userAvatar').src = publicUrl;
             alert("Photo de profil mise à jour !");
+            
+            // Fermeture propre qui reset tout
             closeAvatarModal();
 
         } catch (error) {
-            alert("Erreur lors de l'enregistrement : " + error.message);
-        } finally {
+            alert("Erreur : " + error.message);
+            // En cas d'erreur, on réactive le bouton pour permettre de réessayer
+            uploadBtn.innerText = "<span>✅</span> Valider ce cadrage";
             uploadBtn.disabled = false;
         }
     }, 'image/png');
 }
+
+// ... Le reste (deleteAvatar, window.onclick) reste identique
 
 // 6. Supprimer l'avatar (Retour aux initiales)
 async function deleteAvatar() {
