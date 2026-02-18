@@ -1,5 +1,12 @@
 // ==========================================
-// 1. CONFIGURATION SUPABASE
+// ⚠️  IMPORTANT - SÉCURITÉ CONFIGURATION
+// ==========================================
+// La SUPABASE_KEY (anon key) est publique par nature dans une app front-end.
+// MAIS vous devez impérativement :
+//   1. Activer les Row Level Security (RLS) sur TOUTES vos tables Supabase
+//   2. Ne JAMAIS utiliser la "service_role key" ici (elle bypass le RLS)
+//   3. Idéalement, gérer les opérations sensibles (création user, suppression)
+//      via des Supabase Edge Functions protégées par JWT
 // ==========================================
 const SUPABASE_URL = 'https://neensjugjhkvwcqslicr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZW5zanVnamhrdndjcXNsaWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5Mjg1NzQsImV4cCI6MjA4MTUwNDU3NH0.eDEhhT8HzetCntUZ2LYkZhtoUjSjmFxPQqm03aAL8tU';
@@ -7,70 +14,199 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
-// 2. GESTION DE LA MODALE AVATAR AVEC AJUSTEMENT (CORRIGÉ)
+// 1. SYSTÈME DE TOASTS (remplace tous les alert())
 // ==========================================
+const Toast = (() => {
+    // Crée le conteneur de toasts s'il n'existe pas
+    function getContainer() {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 99999;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-width: 380px;
+            `;
+            document.body.appendChild(container);
+        }
+        return container;
+    }
 
-let cropper; 
+    const STYLES = {
+        success: { bg: '#d1fae5', border: '#10b981', color: '#065f46', icon: '✅' },
+        error:   { bg: '#fee2e2', border: '#ef4444', color: '#991b1b', icon: '❌' },
+        warning: { bg: '#fef3c7', border: '#f59e0b', color: '#92400e', icon: '⚠️' },
+        info:    { bg: '#dbeafe', border: '#3b82f6', color: '#1e40af', icon: 'ℹ️'  },
+    };
+
+    function show(message, type = 'info', duration = 4000) {
+        const style = STYLES[type] || STYLES.info;
+        const container = getContainer();
+
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            background: ${style.bg};
+            border-left: 4px solid ${style.border};
+            color: ${style.color};
+            padding: 14px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 0.92rem;
+            font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateX(20px);
+        `;
+        toast.innerHTML = `<span style="font-size:1.1em;flex-shrink:0;">${style.icon}</span><span>${message}</span>`;
+
+        // Fermer au clic
+        toast.addEventListener('click', () => dismiss(toast));
+        container.appendChild(toast);
+
+        // Animation d'entrée
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        });
+
+        // Auto-dismiss
+        const timer = setTimeout(() => dismiss(toast), duration);
+        toast._timer = timer;
+
+        return toast;
+    }
+
+    function dismiss(toast) {
+        clearTimeout(toast._timer);
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    return {
+        success: (msg, duration) => show(msg, 'success', duration),
+        error:   (msg, duration) => show(msg, 'error', duration),
+        warning: (msg, duration) => show(msg, 'warning', duration),
+        info:    (msg, duration) => show(msg, 'info', duration),
+    };
+})();
+
+// ==========================================
+// 2. UTILITAIRES DE SÉCURITÉ ET VALIDATION
+// ==========================================
+const Security = (() => {
+
+    // Sanitise une chaîne pour éviter l'injection HTML
+    function sanitizeHTML(str) {
+        if (typeof str !== 'string') return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    // Valide un email
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
+    }
+
+    // Valide la force d'un mot de passe
+    function isStrongPassword(password) {
+        // Min 8 chars, 1 majuscule, 1 chiffre, 1 caractère spécial
+        return /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/.test(password);
+    }
+
+    // Tronque un string pour éviter les inputs trop longs
+    function truncate(str, maxLength = 5000) {
+        if (typeof str !== 'string') return '';
+        return str.slice(0, maxLength);
+    }
+
+    // Vérifie que l'utilisateur courant a le rôle requis
+    async function requireRole(requiredRole) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) return false;
+
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!profile) return false;
+
+        const hierarchy = ['editor', 'admin'];
+        const userLevel = hierarchy.indexOf(profile.role);
+        const requiredLevel = hierarchy.indexOf(requiredRole);
+
+        return userLevel >= requiredLevel;
+    }
+
+    return { sanitizeHTML, isValidEmail, isStrongPassword, truncate, requireRole };
+})();
+
+// ==========================================
+// 3. GESTION DE LA MODALE AVATAR
+// ==========================================
+let cropper;
 const modalPreview = document.getElementById('modalAvatarPreview');
 const uploadBtn = document.querySelector('.upload-btn');
-const fileInput = document.getElementById('avatarInputHidden'); // Référence à l'input
+const fileInput = document.getElementById('avatarInputHidden');
 
-// 1. Ouvrir la modale
 document.querySelector('.user-profile-box').onclick = function () {
     const currentSrc = document.getElementById('userAvatar').src;
-    
-    // On s'assure qu'aucun ancien événement onload ne traîne
     modalPreview.onload = null;
-    
     modalPreview.src = currentSrc;
     document.getElementById('avatarModal').style.display = 'flex';
 };
 
-// 2. Fermer la modale et TOUT nettoyer (C'est ici que la correction opère)
 function closeAvatarModal() {
-    // A. Détruire le cropper s'il existe
     if (cropper) {
         cropper.destroy();
         cropper = null;
     }
-
-    // B. IMPORTANT : Supprimer l'événement onload de l'image
-    // Sinon, au prochain changement de src, le cropper se relancera tout seul
     modalPreview.onload = null;
-
-    // C. Réinitialiser l'input file pour permettre de re-sélectionner le même fichier si besoin
-    if (fileInput) fileInput.value = "";
-
-    // D. Cacher la modale
+    if (fileInput) fileInput.value = '';
     document.getElementById('avatarModal').style.display = 'none';
-
-    // E. Remettre le bouton dans son état initial "Modifier"
-    uploadBtn.innerHTML = "<span>📷</span> Modifier";
-    uploadBtn.disabled = false; // Au cas où il serait resté bloqué
+    uploadBtn.innerHTML = '<span>📷</span> Modifier';
+    uploadBtn.disabled = false;
     uploadBtn.onclick = triggerFileInput;
 }
 
-// 3. Déclencher le choix de fichier
 function triggerFileInput() {
     fileInput.click();
 }
 
-// 4. Charger l'image dans l'outil d'ajustement
 async function uploadAvatar(input) {
     if (!input.files || input.files.length === 0) return;
 
     const file = input.files[0];
+
+    // Validation : type et taille (max 5 Mo)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        Toast.error('Format invalide. Utilisez JPG, PNG ou WebP.');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        Toast.error('Image trop lourde. Maximum 5 Mo.');
+        return;
+    }
+
     const reader = new FileReader();
-
     reader.onload = function (e) {
-        // On définit ce qui se passe quand l'image est chargée
         modalPreview.onload = function () {
-            // Sécurité : détruire l'ancien cropper s'il y en a un
-            if (cropper) {
-                cropper.destroy();
-            }
+            if (cropper) cropper.destroy();
 
-            // Initialiser Cropper.js
             cropper = new Cropper(modalPreview, {
                 aspectRatio: 1,
                 viewMode: 1,
@@ -84,33 +220,28 @@ async function uploadAvatar(input) {
                 cropBoxResizable: true,
                 toggleDragModeOnDblclick: false,
                 ready() {
-                    console.log("Cropper est prêt");
-                    // C'est ici que le bouton change
-                    uploadBtn.innerHTML = "<span>✅</span> Valider ce cadrage";
+                    uploadBtn.innerHTML = '<span>✅</span> Valider ce cadrage';
                     uploadBtn.onclick = confirmCrop;
                 }
             });
         };
-
-        // On lance le chargement de l'image (ce qui déclenchera le onload ci-dessus)
         modalPreview.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }
 
-// 5. Envoyer l'image recadrée sur Supabase
 async function confirmCrop() {
     if (!cropper) return;
 
     cropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
         try {
-            uploadBtn.innerText = "Chargement...";
+            uploadBtn.innerText = 'Chargement...';
             uploadBtn.disabled = true;
 
             const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) throw new Error('Session expirée. Reconnectez-vous.');
+
             const userId = session.user.id;
-            
-            // Nom unique avec timestamp
             const fileName = `${userId}/${Date.now()}.png`;
 
             const { error: uploadError } = await supabaseClient.storage
@@ -130,30 +261,31 @@ async function confirmCrop() {
             if (dbError) throw dbError;
 
             document.getElementById('userAvatar').src = publicUrl;
-            alert("Photo de profil mise à jour !");
-            
-            // Fermeture propre qui reset tout
+            Toast.success('Photo de profil mise à jour !');
             closeAvatarModal();
 
         } catch (error) {
-            alert("Erreur : " + error.message);
-            // En cas d'erreur, on réactive le bouton pour permettre de réessayer
-            uploadBtn.innerText = "<span>✅</span> Valider ce cadrage";
+            Toast.error('Erreur lors de la mise à jour : ' + error.message);
+            uploadBtn.innerHTML = '<span>✅</span> Valider ce cadrage';
             uploadBtn.disabled = false;
         }
     }, 'image/png');
 }
 
-// ... Le reste (deleteAvatar, window.onclick) reste identique
-
-// 6. Supprimer l'avatar (Retour aux initiales)
 async function deleteAvatar() {
-    if (!confirm("Supprimer votre photo de profil ?")) return;
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const userId = session.user.id;
+    const confirmed = await confirmDialog(
+        'Supprimer votre photo de profil ?',
+        'Votre avatar sera remplacé par vos initiales.',
+        'Supprimer',
+        'danger'
+    );
+    if (!confirmed) return;
 
     try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Session expirée.');
+
+        const userId = session.user.id;
         const { error } = await supabaseClient
             .from('profiles')
             .update({ avatar_url: null })
@@ -161,30 +293,68 @@ async function deleteAvatar() {
 
         if (error) throw error;
 
-        // Remettre l'avatar par défaut via l'API ui-avatars
         const name = document.getElementById('userName').innerText;
-        const defaultAvatar = `https://ui-avatars.com/api/?name=${name}&background=4e7994&color=fff`;
-
+        const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4e7994&color=fff`;
         document.getElementById('userAvatar').src = defaultAvatar;
-        alert("Photo supprimée.");
+
+        Toast.success('Photo de profil supprimée.');
         closeAvatarModal();
 
     } catch (error) {
-        alert("Erreur : " + error.message);
+        Toast.error('Erreur : ' + error.message);
     }
 }
 
-// Fermer la modale si on clique à côté
 window.onclick = function (event) {
     const modal = document.getElementById('avatarModal');
-    if (event.target == modal) closeAvatarModal();
+    if (event.target === modal) closeAvatarModal();
+};
+
+// ==========================================
+// 4. BOÎTE DE DIALOGUE DE CONFIRMATION (remplace confirm())
+// ==========================================
+function confirmDialog(title, message, confirmLabel = 'Confirmer', type = 'primary') {
+    return new Promise((resolve) => {
+        // Supprimer une ancienne modale si elle existe
+        const existing = document.getElementById('confirm-dialog');
+        if (existing) existing.remove();
+
+        const colors = {
+            danger:  { bg: '#ef4444', hover: '#dc2626' },
+            primary: { bg: '#3b82f6', hover: '#2563eb' },
+            warning: { bg: '#f59e0b', hover: '#d97706' },
+        };
+        const color = colors[type] || colors.primary;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'confirm-dialog';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 100000; display: flex; align-items: center; justify-content: center;
+        `;
+        overlay.innerHTML = `
+            <div style="background:#fff; border-radius:12px; padding:28px 32px; max-width:420px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 8px; font-size:1.1rem; color:#111;">${Security.sanitizeHTML(title)}</h3>
+                <p style="margin:0 0 24px; color:#555; font-size:0.95rem;">${Security.sanitizeHTML(message)}</p>
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button id="dlg-cancel" style="padding:9px 18px; border:1px solid #ddd; border-radius:7px; background:#f9fafb; cursor:pointer; font-weight:500;">Annuler</button>
+                    <button id="dlg-confirm" style="padding:9px 18px; border:none; border-radius:7px; background:${color.bg}; color:#fff; cursor:pointer; font-weight:600;">${Security.sanitizeHTML(confirmLabel)}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('dlg-cancel').onclick = () => { overlay.remove(); resolve(false); };
+        document.getElementById('dlg-confirm').onclick = () => { overlay.remove(); resolve(true); };
+        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+    });
 }
 
 // ==========================================
-// 3. AUTHENTIFICATION ET PROFIL
+// 5. AUTHENTIFICATION ET PROFIL
 // ==========================================
 async function checkUser() {
-    // 1. Vérification de la session
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (!session) {
@@ -193,7 +363,6 @@ async function checkUser() {
     }
 
     try {
-        // 2. Récupération du profil
         const { data: profile, error } = await supabaseClient
             .from('profiles')
             .select('display_name, avatar_url, role')
@@ -202,21 +371,20 @@ async function checkUser() {
 
         if (error) throw error;
 
-        // 3. Affichage du contenu
         document.getElementById('adminContent').style.display = 'block';
 
-        const nameDisplay = document.getElementById('userName');
+        const nameDisplay  = document.getElementById('userName');
         const avatarDisplay = document.getElementById('userAvatar');
-        const roleDisplay = document.getElementById('userRole');
+        const roleDisplay  = document.getElementById('userRole');
 
-        nameDisplay.innerText = profile.display_name || session.user.email;
-        const userRole = profile.role || "editeur";
+        nameDisplay.innerText = Security.sanitizeHTML(profile.display_name || session.user.email);
+        const userRole = profile.role || 'editor';
         if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
 
         if (profile.avatar_url) {
             avatarDisplay.src = profile.avatar_url;
         } else {
-            avatarDisplay.src = `https://ui-avatars.com/api/?name=${profile.display_name || 'Admin'}&background=4e7994&color=fff`;
+            avatarDisplay.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name || 'Admin')}&background=4e7994&color=fff`;
         }
         avatarDisplay.style.display = 'block';
 
@@ -225,173 +393,205 @@ async function checkUser() {
             if (btnAccounts) btnAccounts.style.display = 'inline-block';
         }
 
-        // --- CORRECTION ICI : loadProjects() devient loadNews() ---
         loadNews();
 
     } catch (err) {
-        console.error("Erreur profil:", err);
+        console.error('Erreur profil:', err);
         document.getElementById('userName').innerText = session.user.email;
         document.getElementById('adminContent').style.display = 'block';
-
-        // --- CORRECTION ICI AUSSI ---
         loadNews();
     }
 }
 
 async function logout() {
+    const confirmed = await confirmDialog('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', 'Se déconnecter');
+    if (!confirmed) return;
+
     const { error } = await supabaseClient.auth.signOut();
-    if (error) alert("Erreur lors de la déconnexion");
+    if (error) Toast.error('Erreur lors de la déconnexion.');
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') window.location.href = 'index.html';
 });
 
-// Lancement unique de la vérification
 checkUser();
 
 // ==========================================
-// 4. GESTION DES ARTICLES (CRUD)
+// 6. GESTION DES ARTICLES (CRUD)
 // ==========================================
 let allNewsData = [];
 let currentEditId = null;
-let currentEditImageUrl = "";
+let currentEditImageUrl = '';
 
 document.getElementById('date').valueAsDate = new Date();
 
-// SAUVEGARDER (CRÉER OU MODIFIER)
-document.getElementById('btnSave').addEventListener('click', async () => {
-    const btn = document.getElementById('btnSave');
-    const status = document.getElementById('status');
-    const fileInput = document.getElementById('imageFile');
-    const file = fileInput.files[0];
+// ---- Traductions catégories ----
+const CAT_TRANSLATIONS = {
+    'Produits & Services': 'Products & Services',
+    'Entreprise':          'Corporate',
+    'Technologie':         'Technology',
+    'Info Pratique':       'Useful Info',
+    'Impact':              'Social Impact',
+    'Événement':           'Event'
+};
 
-    const titleFR = document.getElementById('title_fr').value;
-    const titleEN = document.getElementById('title_en').value;
-    const summaryFR = document.getElementById('summary_fr').value;
-    const summaryEN = document.getElementById('summary_en').value;
-    const contentFR = document.getElementById('content_fr').value;
-    const contentEN = document.getElementById('content_en').value;
-    const dateVal = document.getElementById('date').value;
-    const catFR = document.getElementById('category').value;
+// ---- Validation du formulaire article ----
+function validateArticleForm(fields) {
+    const errors = [];
+
+    if (!fields.titleFR.trim()) {
+        errors.push('Le titre en français est obligatoire.');
+    } else if (fields.titleFR.length > 200) {
+        errors.push('Le titre (FR) ne peut pas dépasser 200 caractères.');
+    }
+
+    if (fields.dateVal && isNaN(Date.parse(fields.dateVal))) {
+        errors.push('La date sélectionnée est invalide.');
+    }
+
+    return errors;
+}
+
+// ---- Sauvegarder (Créer ou Modifier) ----
+document.getElementById('btnSave').addEventListener('click', async () => {
+    const btn    = document.getElementById('btnSave');
+    const status = document.getElementById('status');
+    const imgFile = document.getElementById('imageFile').files[0];
+
+    const fields = {
+        titleFR:    Security.truncate(document.getElementById('title_fr').value, 200),
+        titleEN:    Security.truncate(document.getElementById('title_en').value, 200),
+        summaryFR:  Security.truncate(document.getElementById('summary_fr').value, 500),
+        summaryEN:  Security.truncate(document.getElementById('summary_en').value, 500),
+        contentFR:  Security.truncate(document.getElementById('content_fr').value, 20000),
+        contentEN:  Security.truncate(document.getElementById('content_en').value, 20000),
+        dateVal:    document.getElementById('date').value,
+        catFR:      document.getElementById('category').value,
+    };
 
     status.style.display = 'none';
 
-    if (!titleFR) {
-        alert("Le titre en français est obligatoire");
+    // Validation
+    const errors = validateArticleForm(fields);
+    if (errors.length > 0) {
+        Toast.warning(errors.join(' '));
         document.getElementById('title_fr').focus();
         return;
     }
 
+    // Validation image
+    if (imgFile) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(imgFile.type)) {
+            Toast.error('Format image invalide. Utilisez JPG, PNG, WebP ou GIF.');
+            return;
+        }
+        if (imgFile.size > 10 * 1024 * 1024) {
+            Toast.error("L'image dépasse 10 Mo. Veuillez la compresser.");
+            return;
+        }
+    }
+
     btn.disabled = true;
-    btn.innerHTML = currentEditId ? "<span>💾 Enregistrement...</span>" : "<span>⏳ Publication...</span>";
+    btn.innerHTML = currentEditId
+        ? '<span>💾 Enregistrement...</span>'
+        : '<span>⏳ Publication...</span>';
 
     try {
         let imageUrl = currentEditImageUrl;
 
-        if (!currentEditId && !file) {
-            imageUrl = "https://placehold.co/800x400?text=Smart+Wise";
+        // Fallback image si création sans image
+        if (!currentEditId && !imgFile) {
+            imageUrl = 'https://placehold.co/800x400?text=Smart+Wise';
         }
 
-        if (file) {
-            const fileExt = file.name.split('.').pop();
-            const cleanName = Date.now() + Math.random().toString(36).substring(7);
-            const fileName = `news_${cleanName}.${fileExt}`;
+        if (imgFile) {
+            const fileExt  = imgFile.name.split('.').pop().toLowerCase();
+            const cleanName = `${Date.now()}${Math.random().toString(36).substring(7)}`;
+            const fileName  = `news_${cleanName}.${fileExt}`;
 
-            const { error: upErr } = await supabaseClient.storage.from('news-images').upload(fileName, file);
+            const { error: upErr } = await supabaseClient.storage
+                .from('news-images')
+                .upload(fileName, imgFile);
+
             if (upErr) throw upErr;
 
             const { data: urlData } = supabaseClient.storage.from('news-images').getPublicUrl(fileName);
             imageUrl = urlData.publicUrl;
         }
 
-        const catTranslations = {
-            "Produits & Services": "Products & Services",
-            "Entreprise": "Corporate",
-            "Technologie": "Technology",
-            "Info Pratique": "Useful Info",
-            "Impact": "Social Impact",
-            "Événement": "Event"
-        };
-        const catEN = catTranslations[catFR] || catFR;
-
         const payload = {
-            date: dateVal,
-            image: imageUrl,
-            title_fr: titleFR,
-            category_fr: catFR,
-            summary_fr: summaryFR,
-            content_fr: contentFR,
-            title_en: titleEN || titleFR,
-            category_en: catEN,
-            summary_en: summaryEN || summaryFR,
-            content_en: contentEN || contentFR
+            date:        fields.dateVal,
+            image:       imageUrl,
+            title_fr:    fields.titleFR,
+            category_fr: fields.catFR,
+            summary_fr:  fields.summaryFR,
+            content_fr:  fields.contentFR,
+            title_en:    fields.titleEN   || fields.titleFR,
+            category_en: CAT_TRANSLATIONS[fields.catFR] || fields.catFR,
+            summary_en:  fields.summaryEN || fields.summaryFR,
+            content_en:  fields.contentEN || fields.contentFR,
         };
 
-        let error = null;
+        let dbError = null;
 
         if (currentEditId) {
-            const { error: updateErr } = await supabaseClient.from('news').update(payload).eq('id', currentEditId);
-            error = updateErr;
-            status.innerText = "✅ Article modifié avec succès !";
+            const { error } = await supabaseClient.from('news').update(payload).eq('id', currentEditId);
+            dbError = error;
         } else {
-            const { error: insertErr } = await supabaseClient.from('news').insert([payload]);
-            error = insertErr;
-            status.innerText = "✅ Article publié avec succès !";
+            const { error } = await supabaseClient.from('news').insert([payload]);
+            dbError = error;
         }
 
-        if (error) throw error;
+        if (dbError) throw dbError;
 
-        status.style.background = "#d1fae5";
-        status.style.color = "#065f46";
-        status.style.display = 'block';
-
-        setTimeout(() => { status.style.display = 'none'; }, 2000);
-
+        Toast.success(currentEditId ? 'Article modifié avec succès !' : 'Article publié avec succès !');
         resetForm();
         loadNews();
 
     } catch (e) {
         console.error(e);
-        status.innerText = "❌ Erreur: " + e.message;
-        status.style.background = "#fee2e2";
-        status.style.color = "#991b1b";
-        status.style.display = 'block';
+        Toast.error('Erreur : ' + e.message);
     } finally {
         btn.disabled = false;
         if (!currentEditId) btn.innerHTML = "<span>🚀 Publier l'article</span>";
     }
 });
 
-// LISTER LES ARTICLES
+// ---- Lister les articles ----
 async function loadNews() {
     const div = document.getElementById('newsList');
-    const { data, error } = await supabaseClient.from('news').select('*').order('date', { ascending: false });
+    div.innerHTML = `<p style="text-align:center;color:#94a3b8;">Chargement...</p>`;
+
+    const { data, error } = await supabaseClient
+        .from('news')
+        .select('*')
+        .order('date', { ascending: false });
 
     if (error) {
-        div.innerHTML = `<p style="color:red">Erreur: ${error.message}</p>`;
+        div.innerHTML = `<p style="color:red">Erreur : ${Security.sanitizeHTML(error.message)}</p>`;
         return;
     }
 
     allNewsData = data || [];
 
     if (allNewsData.length === 0) {
-        div.innerHTML = `<p style="text-align:center; color:#94a3b8;">Aucun article en ligne.</p>`;
+        div.innerHTML = `<p style="text-align:center;color:#94a3b8;">Aucun article en ligne.</p>`;
         return;
     }
 
-    div.innerHTML = "";
-    allNewsData.forEach(item => {
+    div.innerHTML = allNewsData.map(item => {
         const dateStr = new Date(item.date).toLocaleDateString('fr-FR');
-        div.innerHTML += `
+        return `
             <div class="news-item">
                 <div class="news-content">
-                    <img src="${item.image}" alt="Cover" onerror="this.src='https://placehold.co/80?text=IMG'">
+                    <img src="${Security.sanitizeHTML(item.image)}" alt="Cover" onerror="this.src='https://placehold.co/80?text=IMG'">
                     <div class="news-info">
-                        <h3>${item.title_fr}</h3>
+                        <h3>${Security.sanitizeHTML(item.title_fr)}</h3>
                         <div class="news-meta">
                             <span>📅 ${dateStr}</span>
-                            <span class="badge">${item.category_fr}</span>
+                            <span class="badge">${Security.sanitizeHTML(item.category_fr)}</span>
                         </div>
                     </div>
                 </div>
@@ -401,10 +601,10 @@ async function loadNews() {
                 </div>
             </div>
         `;
-    });
+    }).join('');
 }
 
-// FONCTION EDITER
+// ---- Éditer un article ----
 window.editNews = (id) => {
     const article = allNewsData.find(n => n.id === id);
     if (!article) return;
@@ -413,87 +613,120 @@ window.editNews = (id) => {
     currentEditImageUrl = article.image;
 
     document.getElementById('formTitle').innerText = "Modifier l'actualité";
-    document.getElementById('btnSave').innerHTML = "<span>💾 Mettre à jour</span>";
-    document.getElementById('btnSave').style.background = "#f59e0b";
-    document.getElementById('btnCancel').style.display = "flex";
+    document.getElementById('btnSave').innerHTML = '<span>💾 Mettre à jour</span>';
+    document.getElementById('btnSave').style.background = '#f59e0b';
+    document.getElementById('btnCancel').style.display = 'flex';
 
-    document.getElementById('date').value = article.date;
-    document.getElementById('category').value = article.category_fr;
-    document.getElementById('title_fr').value = article.title_fr;
-    document.getElementById('summary_fr').value = article.summary_fr || "";
-    document.getElementById('content_fr').value = article.content_fr;
-    document.getElementById('title_en').value = article.title_en || "";
-    document.getElementById('summary_en').value = article.summary_en || "";
-    document.getElementById('content_en').value = article.content_en || "";
+    document.getElementById('date').value        = article.date;
+    document.getElementById('category').value    = article.category_fr;
+    document.getElementById('title_fr').value    = article.title_fr;
+    document.getElementById('summary_fr').value  = article.summary_fr   || '';
+    document.getElementById('content_fr').value  = article.content_fr;
+    document.getElementById('title_en').value    = article.title_en     || '';
+    document.getElementById('summary_en').value  = article.summary_en   || '';
+    document.getElementById('content_en').value  = article.content_en   || '';
 
     const imgPrev = document.getElementById('currentImagePreview');
     imgPrev.src = article.image;
     imgPrev.style.display = 'block';
-
-    // Gérer l'affichage du placeholder
     document.getElementById('uploadPlaceholder').style.display = 'none';
     document.getElementById('uploadArea').classList.add('has-image');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// FONCTION RESET
+// ---- Réinitialiser le formulaire ----
 function resetForm() {
     currentEditId = null;
-    currentEditImageUrl = "";
+    currentEditImageUrl = '';
 
-    document.getElementById('formTitle').innerText = "Publier une Actualité";
-    document.getElementById('btnSave').innerHTML = "<span>🚀 Publier l'article</span>";
-    document.getElementById('btnSave').style.background = "var(--primary)";
-    document.getElementById('btnCancel').style.display = "none";
+    document.getElementById('formTitle').innerText = 'Publier une Actualité';
+    document.getElementById('btnSave').innerHTML   = "<span>🚀 Publier l'article</span>";
+    document.getElementById('btnSave').style.background = 'var(--primary)';
+    document.getElementById('btnCancel').style.display  = 'none';
 
-    // Reset Image Preview
     const preview = document.getElementById('currentImagePreview');
     preview.style.display = 'none';
-    preview.src = "";
+    preview.src = '';
     document.getElementById('uploadPlaceholder').style.display = 'block';
     document.getElementById('uploadArea').classList.remove('has-image');
 
-    document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = "");
-    document.getElementById('imageFile').value = "";
+    document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
+    document.getElementById('imageFile').value = '';
     document.getElementById('date').valueAsDate = new Date();
 }
 
-document.getElementById('btnCancel').addEventListener('click', () => { resetForm(); });
+document.getElementById('btnCancel').addEventListener('click', resetForm);
 
-// SUPPRIMER
+// ---- Supprimer un article ----
 window.deleteNews = async (id) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet article définitivement ?")) {
-        const { error } = await supabaseClient.from('news').delete().eq('id', id);
-        if (error) alert("Erreur lors de la suppression");
-        loadNews();
-        if (currentEditId === id) resetForm();
-    }
-}
+    const confirmed = await confirmDialog(
+        'Supprimer cet article ?',
+        'Cette action est irréversible. L\'article sera définitivement supprimé.',
+        'Supprimer',
+        'danger'
+    );
+    if (!confirmed) return;
 
-// GESTION APERÇU IMAGE (FILE READER)
+    // Récupère l'URL de l'image avant suppression
+    const article = allNewsData.find(n => n.id === id);
+
+    // Supprime en base
+    const { error } = await supabaseClient.from('news').delete().eq('id', id);
+    if (error) {
+        Toast.error('Erreur lors de la suppression.');
+        return;
+    }
+
+    // Supprime l'image du bucket si elle vient bien de news-images
+    if (article?.image) {
+        try {
+            const url = new URL(article.image);
+            // L'URL Supabase storage a la forme : .../storage/v1/object/public/news-images/nom_fichier.ext
+            const marker = '/news-images/';
+            const idx = url.pathname.indexOf(marker);
+
+            if (idx !== -1) {
+                const fileName = url.pathname.substring(idx + marker.length);
+                const { error: storageError } = await supabaseClient.storage
+                    .from('news-images')
+                    .remove([decodeURIComponent(fileName)]);
+
+                if (storageError) {
+                    console.warn('Image non supprimée du bucket :', storageError.message);
+                    Toast.warning('Article supprimé, mais l\'image n\'a pas pu être retirée du stockage.');
+                }
+            }
+        } catch (e) {
+            console.warn('Erreur parsing URL image :', e);
+        }
+    }
+
+    Toast.success('Article supprimé.');
+    loadNews();
+    if (currentEditId === id) resetForm();
+};
+
+// ---- Aperçu image ----
 document.getElementById('imageFile').addEventListener('change', function () {
     const file = this.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const preview = document.getElementById('currentImagePreview');
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            document.getElementById('uploadPlaceholder').style.display = 'none';
-            document.getElementById('uploadArea').classList.add('has-image');
-        }
-        reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const preview = document.getElementById('currentImagePreview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        document.getElementById('uploadPlaceholder').style.display = 'none';
+        document.getElementById('uploadArea').classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
 });
 
-// Initialisation
-loadNews();
 // ==========================================
-// GESTION DES COMPTES (POP-UP)
+// 7. GESTION DES COMPTES
 // ==========================================
 
-// 1. Ouvrir / Fermer la modale
 function openAccountModal() {
     resetAccView();
     document.getElementById('accountModal').style.display = 'flex';
@@ -503,145 +736,173 @@ function closeAccountModal() {
     document.getElementById('accountModal').style.display = 'none';
 }
 
-// 2. Navigation dans la modale
 function resetAccView() {
-    document.getElementById('accMenu').style.display = 'flex';
-    document.getElementById('accAddForm').style.display = 'none';
+    document.getElementById('accMenu').style.display      = 'flex';
+    document.getElementById('accAddForm').style.display   = 'none';
     document.getElementById('accListPanel').style.display = 'none';
-    document.getElementById('newUsername').value = ''; // <--- RAJOUTER ICI
-    document.getElementById('newEmail').value = '';
-    document.getElementById('newPass').value = '';
+
+    // Reset des champs
+    ['newUsername', 'newEmail', 'newPass'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    // Masquer les messages d'erreur éventuels
+    const errEl = document.getElementById('accFormError');
+    if (errEl) { errEl.style.display = 'none'; errEl.innerText = ''; }
 }
 
 function showAddUser() {
-    document.getElementById('accMenu').style.display = 'none';
+    document.getElementById('accMenu').style.display    = 'none';
     document.getElementById('accAddForm').style.display = 'block';
 }
 
 async function showDeleteUser() {
-    document.getElementById('accMenu').style.display = 'none';
+    // Vérification de rôle avant d'afficher la liste
+    const isAdmin = await Security.requireRole('admin');
+    if (!isAdmin) {
+        Toast.error("Accès refusé. Seuls les administrateurs peuvent gérer les comptes.");
+        closeAccountModal();
+        return;
+    }
+
+    document.getElementById('accMenu').style.display      = 'none';
     document.getElementById('accListPanel').style.display = 'block';
     loadUsersList();
 }
 
-
-// 3. CRÉER UN UTILISATEUR (Avec traduction du rôle)
+// ---- Créer un utilisateur ----
 async function createUser() {
-    const username = document.getElementById('newUsername').value;
-    const email = document.getElementById('newEmail').value;
+    const username = Security.truncate(document.getElementById('newUsername').value.trim(), 100);
+    const email    = document.getElementById('newEmail').value.trim();
     const password = document.getElementById('newPass').value;
-    const rawRole = document.getElementById('newRole').value; // Récupère la valeur du HTML
+    const rawRole  = document.getElementById('newRole').value;
 
-    if (!email || !password || !username) return alert("Email, Nom et mot de passe requis.");
-
-    // --- TRADUCTION JAVASCRIPT ---
-    // On convertit le français vers les termes techniques de la Base de Données
-    let dbRole = 'editor'; // valeur par défaut
-
-    // Si la valeur est 'admin' ou 'administrateur', on envoie 'admin'
-    if (rawRole.toLowerCase().includes('admin')) {
-        dbRole = 'admin';
+    // Validation des champs
+    const errors = [];
+    if (!username)                          errors.push('Le nom est requis.');
+    if (!email || !Security.isValidEmail(email)) errors.push('Email invalide.');
+    if (!password)                          errors.push('Le mot de passe est requis.');
+    else if (!Security.isStrongPassword(password)) {
+        errors.push('Mot de passe trop faible. Minimum 8 caractères, 1 majuscule, 1 chiffre, 1 caractère spécial.');
     }
-    // Sinon on force 'editor' (pour gérer 'editeur', 'éditeur', 'editor', etc.)
-    else {
-        dbRole = 'editor';
-    }
-    // -----------------------------
 
-    // Création Auth Supabase
+    if (errors.length > 0) {
+        Toast.warning(errors.join(' '));
+        return;
+    }
+
+    // Vérification que l'utilisateur courant est admin
+    const isAdmin = await Security.requireRole('admin');
+    if (!isAdmin) {
+        Toast.error('Accès refusé.');
+        return;
+    }
+
+    const dbRole = rawRole.toLowerCase().includes('admin') ? 'admin' : 'editor';
+
     const { data, error } = await supabaseClient.auth.signUp({
-        email: email,
-        password: password,
+        email,
+        password,
         options: {
             data: {
                 display_name: username,
-                role: dbRole, // <--- On envoie la version traduite (anglais)
-                must_change_password: true
+                role: dbRole,
+                must_change_password: true,
             }
         }
     });
 
     if (error) {
-        alert("Erreur : " + error.message);
-    } else {
-        // Mise à jour de sécurité si le trigger n'a pas tout attrapé (optionnel mais recommandé)
-        if (data.user) {
-            await supabaseClient.from('profiles').update({
-                role: dbRole, // On s'assure que le profil a bien le rôle en anglais
-            }).eq('id', data.user.id);
-        }
-
-        alert("✅ Utilisateur créé avec succès !");
-        resetAccView();
+        Toast.error('Erreur lors de la création : ' + error.message);
+        return;
     }
+
+    // Mise à jour de sécurité du profil
+    if (data.user) {
+        await supabaseClient
+            .from('profiles')
+            .update({ role: dbRole })
+            .eq('id', data.user.id);
+    }
+
+    Toast.success('Utilisateur créé avec succès !');
+    resetAccView();
 }
 
-// 4. LISTER LES UTILISATEURS
+// ---- Lister les utilisateurs ----
 async function loadUsersList() {
     const container = document.getElementById('usersListContainer');
-    container.innerHTML = "Chargement...";
+    container.innerHTML = '<p style="text-align:center;color:#888;">Chargement...</p>';
 
-    // Note : J'ai retiré 'email' du select au cas où la colonne n'existe pas.
-    // Si tu es sûr qu'elle existe, tu peux la remettre.
     const { data: profiles, error } = await supabaseClient
         .from('profiles')
         .select('id, display_name, role');
 
     if (error) {
-        console.error(error);
-        container.innerHTML = "Erreur de chargement.";
+        container.innerHTML = `<p style="color:red;">Erreur : ${Security.sanitizeHTML(error.message)}</p>`;
         return;
     }
 
-    let html = '<ul style="list-style:none; padding:0; margin:0;">';
-
-    profiles.forEach(p => {
-        // --- TRADUCTION INVERSE POUR L'AFFICHAGE ---
-        let displayRole = 'Editeur'; // Défaut
-        if (p.role === 'admin') displayRole = 'Administrateur';
-        if (p.role === 'editor') displayRole = 'Editeur';
-        // -------------------------------------------
-
-        html += `
-        <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <strong>${p.display_name || 'Sans nom'}</strong> <br>
-                <small style="color:#666; background:#f3f4f6; padding:2px 6px; border-radius:4px; font-size:0.8em;">
-                    ${displayRole}
-                </small>
-            </div>
-            <button onclick="deleteUserProfile('${p.id}')" title="Supprimer le profil" style="background:#fee2e2; color:c53030; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">
-                ✕
-            </button>
-        </li>
-        `;
-    });
-    html += '</ul>';
-
-    if (profiles.length === 0) {
-        container.innerHTML = "<p style='text-align:center; color:#888;'>Aucun utilisateur trouvé.</p>";
-    } else {
-        container.innerHTML = html;
+    if (!profiles || profiles.length === 0) {
+        container.innerHTML = "<p style='text-align:center;color:#888;'>Aucun utilisateur trouvé.</p>";
+        return;
     }
+
+    const roleLabels = { admin: 'Administrateur', editor: 'Éditeur' };
+
+    container.innerHTML = `
+        <ul style="list-style:none; padding:0; margin:0;">
+            ${profiles.map(p => `
+                <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>${Security.sanitizeHTML(p.display_name || 'Sans nom')}</strong><br>
+                        <small style="color:#666; background:#f3f4f6; padding:2px 6px; border-radius:4px; font-size:0.8em;">
+                            ${roleLabels[p.role] || 'Éditeur'}
+                        </small>
+                    </div>
+                    <button
+                        onclick="deleteUserProfile('${Security.sanitizeHTML(p.id)}')"
+                        title="Supprimer ce compte"
+                        style="background:#fee2e2; color:#c53030; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">
+                        ✕
+                    </button>
+                </li>
+            `).join('')}
+        </ul>
+    `;
 }
 
-// 5. SUPPRESSION COMPLÈTE (PROFIL + AUTH)
+// ---- Supprimer un compte ----
 async function deleteUserProfile(targetId) {
-    // Le message change car maintenant on supprime TOUT pour de vrai
-    if (!confirm("⚠️ ATTENTION : Cette action est IRRÉVERSIBLE.\n\nCela supprimera définitivement :\n- Le profil public\n- L'accès de connexion (Auth)\n\nÊtes-vous sûr ?")) {
+    // Vérification admin côté client (le RLS doit aussi le bloquer côté serveur)
+    const isAdmin = await Security.requireRole('admin');
+    if (!isAdmin) {
+        Toast.error('Accès refusé.');
         return;
     }
 
-    // ICI c'est le changement important : on utilise .rpc() au lieu de .from().delete()
-    const { error } = await supabaseClient.rpc('delete_user_account', { 
-        user_id: targetId 
-    });
+    // Empêcher l'admin de se supprimer lui-même
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user.id === targetId) {
+        Toast.warning('Vous ne pouvez pas supprimer votre propre compte.');
+        return;
+    }
+
+    const confirmed = await confirmDialog(
+        'Supprimer ce compte ?',
+        '⚠️ Cette action est irréversible. Elle supprimera le profil et l\'accès de connexion de cet utilisateur.',
+        'Supprimer définitivement',
+        'danger'
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabaseClient.rpc('delete_user_account', { user_id: targetId });
 
     if (error) {
-        console.error("Erreur RPC:", error);
-        alert("Erreur lors de la suppression : " + error.message);
+        Toast.error('Erreur lors de la suppression : ' + error.message);
     } else {
-        alert("✅ Utilisateur et compte Auth supprimés définitivement !");
-        loadUsersList(); // Rafraîchir la liste
+        Toast.success('Compte supprimé définitivement.');
+        loadUsersList();
     }
 }
